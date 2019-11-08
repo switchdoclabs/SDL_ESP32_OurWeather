@@ -7,6 +7,7 @@ void myBTimerEvent();
 void startBlynk()
 {
 
+  Serial.println(">>>>StartBlynk()");
 
 
   Blynk.config(BlynkAuthCode.c_str());
@@ -15,14 +16,73 @@ void startBlynk()
   {
 
 
-    // Setup a function to be called every 10 seconds
-    Btimer.setInterval(10000L, myBTimerEvent);
+    // Setup a function to be called every 5 seconds - includes sensor read
+    Btimer.setInterval(5000L, myBTimerEvent);
   }
   UseBlynk = true;
 
 
+
+
+
   Blynk.connect();
-  writeToBlynkStatusTerminal((String)"OurWeather Version V" + (String)WEATHERPLUSESP8266VERSION + " Started From Admin Page");
+  writeToBlynkStatusTerminal((String)"OurWeather Version V" + (String)WEATHERPLUSESP32VERSION + " Started From Admin Page");
+
+}
+
+void clearSolar()
+{
+
+  Blynk.virtualWrite(V56, String(returnPercentLeftInBattery(BatteryVoltage , 4.19)) );
+  Blynk.virtualWrite(V57, String(returnPercentLeftInBattery(BatteryVoltage , 4.19)) + "%" );
+  //
+  // Now do the graphs and results on the solar page
+  delay(1000); // push variables into next second - avoid flood
+  char floatString[15] = "0.00";
+
+  Blynk.virtualWrite(V80,  atof(floatString));
+  Blynk.virtualWrite(V50,  String(floatString ) + "V");
+
+
+  Blynk.virtualWrite(V81, atof(floatString ));
+  Blynk.virtualWrite(V51, String(floatString ) + "mA");
+
+
+  Blynk.virtualWrite(V82,  atof(floatString));
+  Blynk.virtualWrite(V52,  String(floatString) + "V");
+
+
+  Blynk.virtualWrite(V83, atof(floatString) );
+  Blynk.virtualWrite(V53, String(floatString)  + "mA");
+
+
+
+
+  Blynk.virtualWrite(V84,  atof(floatString));
+  Blynk.virtualWrite(V54, String(floatString)  + "V");
+
+
+
+
+  Blynk.virtualWrite(V85, atof(floatString) );
+  Blynk.virtualWrite(V55, String(floatString)  + "mA");
+
+
+
+  // Power
+
+
+  Blynk.virtualWrite(V60, String(floatString) + "W");
+
+
+  Blynk.virtualWrite(V61, String(floatString) + "W" );
+
+
+  Blynk.virtualWrite(V62,  String(floatString) + "W");
+
+
+  Blynk.virtualWrite(V58,  "No Solar Data");
+
 
 }
 void myBTimerInstantEvent();
@@ -38,9 +98,9 @@ void myBTimerInstantEvent();
 void writeToBlynkStatusTerminal(String statement)
 {
 
-  RtcDateTime now = Rtc.GetDateTime();
+
   String currentTimeString;
-  currentTimeString = returnDateTime(now);
+  currentTimeString = returnDateTime(now());
 
   statusTerminal.println(currentTimeString + (String)": " + statement );
   statusTerminal.flush();   // Ensure that data was sent out of device
@@ -61,13 +121,14 @@ void writeToStatusLine(String statement)
 void myBTimerEvent()
 {
 
+
   // You can send any value at any time.
   // Please don't send more that 10 values per second.
 #ifdef DEBUGBLYNK
   Serial.println("myBTimerEvent - Starting");
 #endif
   Blynk.connect();
-#ifdef DEBUGBLYNK
+
   if (Blynk.connected())
   {
     Serial.println("Blynk Connected");
@@ -75,21 +136,27 @@ void myBTimerEvent()
   }
   else
   {
+    Blynk.disconnect();
     Serial.println("Blynk NOT Connected");
+    Blynk.config(BlynkAuthCode.c_str());
+    Blynk.connect();
 
   }
-#endif
+
 
   // only 10 values a second
-  RtcDateTime now = Rtc.GetDateTime();
+
   String currentTimeString;
-  currentTimeString = returnDateTime(now);
+  currentTimeString = returnDateTime(now());
   Blynk.virtualWrite(V44, currentTimeString);
 
-  Blynk.virtualWrite(V1, String(AM2315_Humidity) + "%");
-  Blynk.virtualWrite(V4, String(AM2315_Humidity));
+  Blynk.virtualWrite(V1, String(SHT30_Humidity) + "%");
+  Blynk.virtualWrite(V4, String(SHT30_Humidity));
 
 
+ 
+
+  Serial.println("Past first blynk virtual writes");
   char buffer[20];
   if (EnglishOrMetric == 0)
   {
@@ -98,7 +165,7 @@ void myBTimerEvent()
 
     char floatString[15];
     float FTemp;
-    FTemp = AM2315_Temperature * 1.8 + 32.0;
+    FTemp = SHT30_Temperature * 1.8 + 32.0;
 
     buffer[0] = '\0';
     dtostrf(FTemp, 5, 1, floatString);
@@ -114,7 +181,7 @@ void myBTimerEvent()
 
     char floatString[15];
     float FTemp;
-    FTemp = AM2315_Temperature;
+    FTemp = SHT30_Temperature;
 
     buffer[0] = '\0';
     dtostrf(FTemp, 5, 1, floatString);
@@ -162,6 +229,15 @@ void myBTimerEvent()
 
   char floatString[15];
   String windDirection;
+
+ // Lux Values
+
+
+
+  buffer[0] = '\0';
+  dtostrf(TSL2591_Lux, 5, 1, floatString);
+  strcat(buffer, floatString);
+  Blynk.virtualWrite(V90, buffer);
 
 
   // Wind variables
@@ -229,22 +305,22 @@ void myBTimerEvent()
   {
     // English Units
     buffer[0] = '\0';
-    dtostrf((BMP180_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
+    dtostrf((BMP280_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
     strcat(buffer, floatString);
     strcat(buffer, "in");
     Blynk.virtualWrite(V40, buffer );
-    Blynk.virtualWrite(V41, (BMP180_Pressure / 1000.0) * 0.29529980165 );
+    Blynk.virtualWrite(V41, (BMP280_Pressure / 1000.0) * 0.29529980165 );
 
   }
 
   else
   {
     buffer[0] = '\0';
-    dtostrf(BMP180_Pressure / 100.0, 6, 1, floatString);
+    dtostrf(BMP280_Pressure / 100.0, 6, 1, floatString);
     strcat(buffer, floatString);
     strcat(buffer, "kPa");
     Blynk.virtualWrite(V40, buffer );
-    Blynk.virtualWrite(V41, (BMP180_Pressure / 1000.0)  );
+    Blynk.virtualWrite(V41, (BMP280_Pressure / 1000.0)  );
   }
 
 
@@ -258,7 +334,7 @@ void myBTimerEvent()
     // English Units
     buffer[0] = '\0';
 
-    dtostrf(BMP180_Temperature * 1.8 + 32.0, 5, 1, floatString);
+    dtostrf(BMP280_Temperature * 1.8 + 32.0, 5, 1, floatString);
     strcat(buffer, floatString);
     strcat(buffer, "F");
     Blynk.virtualWrite(V21, buffer );
@@ -269,7 +345,7 @@ void myBTimerEvent()
 
     buffer[0] = '\0';
 
-    dtostrf(BMP180_Temperature, 4, 1, floatString);
+    dtostrf(BMP280_Temperature, 4, 1, floatString);
     strcat(buffer, floatString);
     strcat(buffer, "C");
     Blynk.virtualWrite(V21, buffer );
@@ -317,8 +393,8 @@ void myBTimerEvent()
     Blynk.virtualWrite(V84,  atof(floatString));
     Blynk.virtualWrite(V54, String(floatString)  + "V");
 
-  
-    
+
+
     dtostrf(LoadCurrent, 5, 1, floatString);
     Blynk.virtualWrite(V85, atof(floatString) );
     Blynk.virtualWrite(V55, String(floatString)  + "mA");
@@ -335,8 +411,79 @@ void myBTimerEvent()
     dtostrf((LoadVoltage * LoadCurrent) / 1000.0, 5, 2, floatString);
     Blynk.virtualWrite(V62,  String(floatString) + "W");
 
+    Blynk.virtualWrite(V58,  "Solar Data");
+
+  }
+  else
+  {
+    // SunAirPlus NOT present, so check for WXLink
+
+    if (WXLink_Present == true)
+    {
+
+      bool dataStale;
+
+      // check for stale data from WXLink
 
 
+      dataStale = isDataStale();
+
+      if (dataStale == false) // New data
+      {
+        // put in WXLink Solar Information
+
+
+        Blynk.virtualWrite(V56, String(returnPercentLeftInBattery(WXBatteryVoltage , 4.19)) );
+        Blynk.virtualWrite(V57, String(returnPercentLeftInBattery(WXBatteryVoltage , 4.19)) + "%" );
+        //
+        // Now do the graphs and results on the solar page
+        delay(1000); // push variables into next second - avoid flood
+
+        dtostrf(WXSolarPanelVoltage, 5, 2, floatString);
+        Blynk.virtualWrite(V80,  atof(floatString));
+        Blynk.virtualWrite(V50,  String(floatString) + "V");
+
+        dtostrf(WXSolarPanelCurrent, 5, 1, floatString);
+        Blynk.virtualWrite(V81, atof(floatString ));
+        Blynk.virtualWrite(V51, String(floatString ) + "mA");
+
+        dtostrf(WXBatteryVoltage, 5, 2, floatString);
+        Blynk.virtualWrite(V82,  atof(floatString));
+        Blynk.virtualWrite(V52,  String(floatString) + "V");
+
+        dtostrf(WXBatteryCurrent, 5, 1, floatString);
+        Blynk.virtualWrite(V83, atof(floatString) );
+        Blynk.virtualWrite(V53, String(floatString)  + "mA");
+
+
+
+        dtostrf(5.0, 5, 2, floatString);
+        Blynk.virtualWrite(V84,  atof(floatString));
+        Blynk.virtualWrite(V54, String(floatString)  + "V");
+
+
+
+        dtostrf(WXLoadCurrent, 5, 1, floatString);
+        Blynk.virtualWrite(V85, atof(floatString) );
+        Blynk.virtualWrite(V55, String(floatString)  + "mA");
+
+
+        // Power
+
+        dtostrf((WXBatteryVoltage * WXBatteryCurrent ) / 1000.0, 5, 2, floatString);
+        Blynk.virtualWrite(V60, String(floatString) + "W");
+
+        dtostrf((WXSolarPanelVoltage * WXSolarPanelCurrent) / 1000.0, 5, 2, floatString);
+        Blynk.virtualWrite(V61, String(floatString) + "W" );
+
+        dtostrf((5.0 * WXLoadCurrent) / 1000.0, 5, 2, floatString);
+        Blynk.virtualWrite(V62,  String(floatString) + "W");
+      }
+
+      Blynk.virtualWrite(V58,  "WXLink Solar Data");
+
+
+    }
   }
 
 
@@ -386,4 +533,3 @@ void myBTimerEvent()
 
   }
 */
-

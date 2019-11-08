@@ -36,8 +36,8 @@ int sendWeatherUndergroundData()
   myURL += "&windspeedmph=" + String(currentWindSpeed / 1.6);
   myURL += "&windgustmph=" + String(currentWindGust / 1.6);
 
-  myURL += "&humidity=" + String(AM2315_Humidity);
-  myURL += "&tempf=" + String((AM2315_Temperature * 9.0 / 5.0) + 32.0);
+  myURL += "&humidity=" + String(SHT30_Humidity);
+  myURL += "&tempf=" + String((SHT30_Temperature * 9.0 / 5.0) + 32.0);
   
   myURL += "&dewptf=" + String((dewpoint * 9.0 / 5.0) + 32.0);
 
@@ -45,9 +45,9 @@ int sendWeatherUndergroundData()
   myURL += "&dailyrainin=" + String(( rainCalendarDay) / 25.4);
 
  
-  myURL += "&baromin=" + String((BMP180_Pressure / 1000.0) * 0.2953, 4);
+  myURL += "&baromin=" + String((BMP280_Pressure / 1000.0) * 0.2953, 4);
 
-  myURL += "&indoortempf=" + String((BMP180_Temperature * 9.0 / 5.0) + 32.0);
+  myURL += "&indoortempf=" + String((BMP280_Temperature * 9.0 / 5.0) + 32.0);
   //myURL += "&indoorhumidity%0.2f=" % HTUhumidity
 
   myURL += "&software=OurWeather";
@@ -93,4 +93,3 @@ String WUResult;
 
 
 }
-

@@ -1,29 +1,72 @@
 //
 // Supports the SwitchDoc Labs WXLink Device
 //
+#include <RH_RF95.h>
 
 #define RXDEBUG
 
 
-void resetWXLink()
+byte buffer[75];
+byte lastGoodMessage[64];
+byte buflen = 0;
+
+long consecutiveGoodMessages;
+long lastGoodMessageID;
+long goodMessages;
+long badMessages;
+
+#define COMSerial Serial2
+
+
+RH_RF95<HardwareSerial> rf95(COMSerial);
+
+bool scanSerialForWXLink()
 {
-  // assumes that WXLink Reset Pin is connected to WeatherPlus GPIO Pin #13 (also used with lightning detector)
-  //
 
-  Serial.println("Reseting WXLink");
+  
+  if (!rf95.init())
+  {
+    Serial.println("WXLink init failed");
+    return false;
 
-  digitalWrite(13, 0);
-  pinMode(13, OUTPUT);
-  delay(100);
+  }
 
-  pinMode(13, INPUT);
-  digitalWrite(13, 1);
+  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
+  // The default transmitter power is 13dBm, using PA_BOOST.
+  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
+  // you can set transmitter powers from 5 to 23 dBm:
+  //rf95.setTxPower(13, false);
+
+  rf95.setFrequency(434.0);
+  rf95.setTxPower(13);
+  int Bw31_25Cr48Sf512 = 2;
+
+  rf95.setModemConfig(RH_RF95<HardwareSerial>::ModemConfigChoice(Bw31_25Cr48Sf512));
+  //rf95.printRegisters();
+  //rf95.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
+  //rf95.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+
+  //rf95.setTxPower(5);
+
+  //rf95.printRegisters();
+
+  consecutiveGoodMessages = 0;
+  int i;
+  for (i = 0; i < 64; i++)
+  {
+    lastGoodMessage[i] = 0;
+
+
+  }
+  return true;
 
 }
 
 
-byte buffer[75];
+
+
+
 
 
 void printBuffer(byte *buffer, int buflen)
@@ -102,8 +145,10 @@ int interpretBuffer(byte *buffer, int buflen)
   }
 #ifdef RXDEBUG
   Serial.println("Start Bytes Found");
+  Serial.print("Bufflen = ");
+  Serial.println(buflen);
 #endif
-  if (buflen != 64)
+  if (buflen != 63)
   {
     return 2; // buflen wrong
   }
@@ -133,72 +178,92 @@ int interpretBuffer(byte *buffer, int buflen)
 
   }
 
+  int ProtocolID = buffer[2] / 10;
 
-
+  if (ProtocolID != 3)
+  {
+    #ifdef RXDEBUG
+      Serial.print("Received Protocol ");
+      Serial.println(ProtocolID);
+    #endif
+    // unknown protocol ignore
+    return 4;
+  }
 
   //
 
 #ifdef RXDEBUG
+  //
 
-  Serial.println("Correct Buffer Length");
+  Serial.println();
+  Serial.println(F("-------------"));
+  Serial.println(F("-------------"));
 
-  Serial.print("Protocol=");
+  Serial.print(F("ProtocolByte="));
   Serial.println(buffer[2]);
 
-  Serial.print("TimeSinceReboot(msec)=");
+  Serial.print(F("ProtocolID="));
+  Serial.println(buffer[2] / 10);
+  Serial.print(F("Protocol Software Version="));
+  Serial.println(buffer[2] - (buffer[2] / 10) * (10));
+
+  Serial.print(F("TimeSinceReboot(msec)="));
   Serial.println(convert4BytesToLong(buffer, 3));
 
-  Serial.print("Wind Direction=");
+  Serial.print(F("Wind Direction="));
   Serial.println(convert2BytesToInt(buffer, 7));
 
-  Serial.print("Average Wind Speed (KPH)=");
+  Serial.print(F("Average Wind Speed (KPH)="));
   Serial.println(convert4BytesToFloat(buffer, 9));
 
-  Serial.print("Wind Clicks=");
+  Serial.print(F("Wind Clicks="));
   Serial.println(convert4BytesToLong(buffer, 13));
 
-  Serial.print("Total Rain Clicks=");
+  Serial.print(F("Total Rain Clicks="));
   Serial.println(convert4BytesToLong(buffer, 17));
 
-  Serial.print("Max Wind Gust=");
+  Serial.print(F("Max Wind Gust="));
   Serial.println(convert4BytesToFloat(buffer, 21));
 
 
 
-  Serial.print("Outside Temperature=");
+  Serial.print(F("Outside Temperature="));
   Serial.println(convert4BytesToFloat(buffer, 25));
 
-  Serial.print("OT Hex=");
+  Serial.print(F("OT Hex="));
   Serial.print(buffer[25], HEX);
   Serial.print(buffer[26], HEX);
   Serial.print(buffer[27], HEX);
   Serial.println(buffer[28], HEX);
 
-  Serial.print("Outside Humidity=");
+  Serial.print(F("Outside Humidity="));
   Serial.println(convert4BytesToFloat(buffer, 29));
 
-  Serial.print("BatteryVoltage=");
+  Serial.print(F("BatteryVoltage="));
   Serial.println(convert4BytesToFloat(buffer, 33));
-  Serial.print("BatteryCurrent=");
+  Serial.print(F("BatteryCurrent="));
   Serial.println(convert4BytesToFloat(buffer, 37));
-  Serial.print("LoadCurrent=");
+  Serial.print(F("LoadCurrent="));
   Serial.println(convert4BytesToFloat(buffer, 41));
-  Serial.print("SolarPanelVoltage=");
+  Serial.print(F("SolarPanelVoltage="));
   Serial.println(convert4BytesToFloat(buffer, 45));
-  Serial.print("SolarPanelCurrent=");
+  Serial.print(F("SolarPanelCurrent="));
   Serial.println(convert4BytesToFloat(buffer, 49));
 
-  Serial.print("AuxA=");
+  Serial.print(F("AuxA="));
   Serial.println(convert4BytesToFloat(buffer, 53));
 
-  Serial.print("Message ID=");
+  Serial.print(F("Message ID="));
   Serial.println(convert4BytesToLong(buffer, 57));
 
 
-  Serial.print("Checksum High=0x");
+  Serial.print(F("Checksum High=0x"));
   Serial.println(buffer[61], HEX);
-  Serial.print("Checksum Low=0x");
+  Serial.print(F("Checksum Low=0x"));
   Serial.println(buffer[62], HEX);
+
+
+
 #endif
 
   return 0;
@@ -217,70 +282,23 @@ void clearBufferArray(int buflen)              // function to clear buffer array
 bool readWXLink()
 {
 
-  Wire.setClock(100000L);
-  // only set variables if we read it correctly
-  // request block 0
-
-
-
-
-  Wire.beginTransmission(0x08);
-  delay(10);
-  Wire.write(0x00);
-  Wire.endTransmission();
-
-  Wire.setClockStretchLimit(1500);    // in µs
-
-  int blockcount =   Wire.requestFrom(0x08, 32, true);
-  Serial.print("Block Count Recieved=");
-  Serial.println(blockcount);
-
-
-  int bufferCount;
-  bufferCount = 0;
-  while (Wire.available())
+  buflen = 75;
+  byte messageLength;
+  if (rf95.recv(buffer, &buflen))
   {
-
-    buffer[bufferCount] = Wire.read();
-    bufferCount ++;
-    delay(10);
-
-
+    Serial.println("Message Received");
+  }
+  else
+  {
+    Serial.println("No Message Received");
   }
 
-  // Now request Block 1
-  Wire.beginTransmission(0x08);
-  delay(10);
-  Wire.write(0x01);
-  Wire.endTransmission();
+  messageLength = buflen;   // clear off LoRa corruption byte
 
-  Wire.setClockStretchLimit(1500);    // in µs
-
-  blockcount =   Wire.requestFrom(0x08, 32, true);
-  Serial.print("Block Count Recieved=");
-  Serial.println(blockcount);
-
-  while (Wire.available())
-  {
-
-    buffer[bufferCount] = Wire.read();
-    bufferCount ++;
-
-    delay(10);
+  //printBuffer( buffer, buflen);
 
 
-  }
-
-#ifdef RXDEBUG
-  Serial.print("bufferCount = ");
-  Serial.println(bufferCount);
-  //  printBuffer(buffer, bufferCount);
-#endif
-
-
-  int badWXLinkReads = 0;
-
-  int interpretResult = interpretBuffer(buffer, bufferCount);
+  int interpretResult = interpretBuffer(buffer, buflen);
 
 
   switch (interpretResult)
@@ -288,7 +306,6 @@ bool readWXLink()
     case 0:
       {
         Serial.println("Good Message");
-        badWXLinkReads = 0;
 
         return true;
 
@@ -296,19 +313,7 @@ bool readWXLink()
       break;
     case 1:
       Serial.println("Bad Message - No Start Bytes");
-      // only reset on three bad reads in a row
 
-      Serial.print("badWXLinkReads=");
-      Serial.println(badWXLinkReads);
-      if (badWXLinkReads == 2)
-      {
-        resetWXLink();
-        badWXLinkReads = 0;
-      }
-      else
-      {
-        badWXLinkReads++;
-      }
       return false;
       break;
     case 2:
@@ -317,6 +322,10 @@ bool readWXLink()
       break;
     case 3:
       Serial.println("Bad Message - Bad Checksum");
+      return false;
+      break;
+    case 4:
+      Serial.println("Good Message - Unknown Protocol");
       return false;
       break;
     default:
@@ -333,9 +342,6 @@ bool readWXLink()
 
   int i;
 
-
-
-  bufferCount = 0;
   // digitalWrite(LED, HIGH);
   //delay(100);
   //digitalWrite(LED, LOW);
@@ -344,10 +350,3 @@ bool readWXLink()
 
 
 }
-
-
-
-
-
-
-

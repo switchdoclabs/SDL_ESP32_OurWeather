@@ -18,7 +18,7 @@ void writeAllDisplayLines(int DisplayMode);
 
 // https://stackoverflow.com/questions/9072320/split-string-into-string-array
 
-char displayLines[20][28];
+char displayLines[25][28];
 
 
 // WeatherPlus Text Buffer Lines
@@ -30,15 +30,16 @@ void updateDisplay(int displayMode)
 
   char buffer[40];
   char returnString[200];
-
+#ifdef OWDEBUG
   Serial.print("displayMode=");
   Serial.println(displayMode);
+#endif
   String windDirection;
 
-  RtcDateTime now = Rtc.GetDateTime();
+
 
   String currentTimeString;
-  currentTimeString = returnDateTime(now);
+  currentTimeString = returnDateTime(now());
 
   switch (displayMode)
   {
@@ -96,12 +97,12 @@ void updateDisplay(int displayMode)
 
 
     case DISPLAY_POWERUP:
-      Serial.println("OurWeather Booting Up");
+      Serial.println("OurWeather V2 Booting Up");
 
       strcpy(buffer, "Ver: ");
-      strcat(buffer, WEATHERPLUSESP8266VERSION);
+      strcat(buffer, WEATHERPLUSESP32VERSION);
 
-      setDisplayLine(0,  "OurWeather Booting");
+      setDisplayLine(0,  "OurWeather V2 Booting");
       setDisplayLine(1, buffer);
       setDisplayLine(2, "");
       setDisplayLine(3, "");
@@ -137,7 +138,37 @@ void updateDisplay(int displayMode)
 
         setDisplayLine(0,  "Trying WiFi AP");
         buffer[0] = '\0';
-        strcpy(buffer, Wssid.c_str());
+        strcpy(buffer, "192.168.4.1");
+        setDisplayLine(1, buffer);
+        buffer[0] = '\0';
+
+#define WL_MAC_ADDR_LENGTH 6
+        // Append the last two bytes of the MAC (HEX'd) to string to make unique
+        uint8_t mac[WL_MAC_ADDR_LENGTH];
+        WiFi.softAPmacAddress(mac);
+        String macID = String(mac[WL_MAC_ADDR_LENGTH - 2], HEX) +
+                       String(mac[WL_MAC_ADDR_LENGTH - 1], HEX);
+        macID.toUpperCase();
+        String mySSID;
+        mySSID = "OurWeather-" + macID;
+        buffer[0] = '\0';
+        strcpy(buffer, mySSID.c_str());
+        setDisplayLine(2, buffer);
+        setDisplayLine(3, "");
+
+      }
+      break;
+
+    case  DISPLAY_TRYING_SMARTCONFIG:
+      {
+        Serial.println("OurWeather Setup");
+
+
+
+
+        setDisplayLine(0,  "Trying WiFi ");
+        buffer[0] = '\0';
+        strcpy(buffer, "Smart Config");
         setDisplayLine(1, buffer);
         buffer[0] = '\0';
         setDisplayLine(2, "");
@@ -146,12 +177,31 @@ void updateDisplay(int displayMode)
       }
       break;
 
+    case  DISPLAY_TRYING_WPS:
+      {
+        Serial.println("OurWeather Setup");
+
+
+
+
+        setDisplayLine(0,  "Trying WiFi WPS");
+        buffer[0] = '\0';
+
+        setDisplayLine(1, "");
+        setDisplayLine(2, "");
+        setDisplayLine(3, "");
+
+      }
+      break;
+
+
+
     case  DISPLAY_FAILING_AP:
       {
 
         setDisplayLine(0,  "Failing to connect WiFi AP");
         buffer[0] = '\0';
-        strcpy(buffer, Wssid.c_str());
+        strcpy(buffer, WiFi_SSID.c_str());
         setDisplayLine(1, buffer);
         buffer[0] = '\0';
         setDisplayLine(2, "Restarting OurWeather");
@@ -165,7 +215,7 @@ void updateDisplay(int displayMode)
 
         setDisplayLine(0,  "Failing to reconnect to WiFI");
         buffer[0] = '\0';
-        strcpy(buffer, Wssid.c_str());
+        strcpy(buffer, WiFi_SSID.c_str());
         setDisplayLine(1, buffer);
         buffer[0] = '\0';
         setDisplayLine(3, "Will try again....");
@@ -207,7 +257,7 @@ void updateDisplay(int displayMode)
           setDisplayLine(2, "");
           setDisplayLine(3, "");
         }
-        delay(2000);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
       }
       break;
 
@@ -277,7 +327,7 @@ void updateDisplay(int displayMode)
 
         setDisplayLine(0, "LIGHTNING!");
         setDisplayLine(1, "----------------");
-        setDisplayLine(2, const_cast<char*>(stringSolar.c_str()) ); 
+        setDisplayLine(2, const_cast<char*>(stringSolar.c_str()) );
         setDisplayLine(3, "----------------");
         setDisplayLine(4, "LIGHTNING!");
 
@@ -331,22 +381,22 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           strcat(buffer, "OT:");
-          dtostrf(AM2315_Temperature * 1.8 + 32.0, 4, 1, floatString);
+          dtostrf(SHT30_Temperature * 1.8 + 32.0, 4, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           strcat(buffer, "  OH:");
-          dtostrf(AM2315_Humidity, 3, 1, floatString);
+          dtostrf(SHT30_Humidity, 3, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(0, buffer);
 
           buffer[0] = '\0';
           strcat(buffer, "IT:");
-          dtostrf(BMP180_Temperature * 1.8 + 32.0, 5, 1, floatString);
+          dtostrf(BMP280_Temperature * 1.8 + 32.0, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           strcat(buffer, " BP:");
-          dtostrf((BMP180_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
+          dtostrf((BMP280_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "in");
           setDisplayLine(1, buffer);
@@ -401,22 +451,22 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           strcat(buffer, "OT: ");
-          dtostrf(AM2315_Temperature, 4, 1, floatString);
+          dtostrf(SHT30_Temperature, 4, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           strcat(buffer, " OH: ");
-          dtostrf(AM2315_Humidity, 3, 1, floatString);
+          dtostrf(SHT30_Humidity, 3, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(0, buffer);
 
           buffer[0] = '\0';
           strcat(buffer, "IT: ");
-          dtostrf(BMP180_Temperature, 4, 1, floatString);
+          dtostrf(BMP280_Temperature, 4, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           strcat(buffer, " BP: ");
-          dtostrf(BMP180_Pressure / 100.0, 6, 1, floatString);
+          dtostrf(BMP280_Pressure / 100.0, 6, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "kPa");
           setDisplayLine(1, buffer);
@@ -470,14 +520,14 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           strcat(buffer, "OT:");
-          dtostrf(AM2315_Temperature * 1.8 + 32.0, 5, 1, floatString);
+          dtostrf(SHT30_Temperature * 1.8 + 32.0, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           setDisplayLine(0, buffer);
           buffer[0] = '\0';
 
           strcat(buffer, "OH:");
-          dtostrf(AM2315_Humidity, 5, 1, floatString);
+          dtostrf(SHT30_Humidity, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(1, buffer);
@@ -486,14 +536,14 @@ void updateDisplay(int displayMode)
           //updateAllWeatherVariables();
           buffer[0] = '\0';
           strcat(buffer, "IT: ");
-          dtostrf(BMP180_Temperature * 1.8 + 32.0, 4, 1, floatString);
+          dtostrf(BMP280_Temperature * 1.8 + 32.0, 4, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           setDisplayLine(2, buffer);
           buffer[0] = '\0';
 
           strcat(buffer, "BP:");
-          dtostrf((BMP180_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
+          dtostrf((BMP280_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "in");
           setDisplayLine(3, buffer);
@@ -552,14 +602,14 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           strcat(buffer, "OT: ");
-          dtostrf(AM2315_Temperature, 5, 1, floatString);
+          dtostrf(SHT30_Temperature, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           setDisplayLine(0, buffer);
           buffer[0] = '\0';
 
           strcat(buffer, "OH: ");
-          dtostrf(AM2315_Humidity, 5, 1, floatString);
+          dtostrf(SHT30_Humidity, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(1, buffer);
@@ -568,14 +618,14 @@ void updateDisplay(int displayMode)
           //updateAllWeatherVariables();
           buffer[0] = '\0';
           strcat(buffer, "IT: ");
-          dtostrf(BMP180_Temperature, 5, 1, floatString);
+          dtostrf(BMP280_Temperature, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           setDisplayLine(2, buffer);
           buffer[0] = '\0';
 
           strcat(buffer, "BP:");
-          dtostrf(BMP180_Pressure / 100.0, 6, 1, floatString);
+          dtostrf(BMP280_Pressure / 100.0, 6, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "kPa");
           setDisplayLine(3, buffer);
@@ -622,15 +672,18 @@ void updateDisplay(int displayMode)
 
 
         // display date and time
-
+        char floatString[15];
         buffer[0] = '\0';
         strcat(buffer, currentTimeString.c_str());
         setDisplayLine(8, buffer);
         setDisplayLine(9, "");
         String airQual;
-        airQual =  reportAirQuality(currentAirQuality);
-        setDisplayLine(11, const_cast<char*>(airQual.c_str()) );
-        setDisplayLine(10, " Air Qual");
+        airQual =  "AQ:" + reportAirQuality(currentAirQuality);
+        setDisplayLine(10, const_cast<char*>(airQual.c_str()) );
+        dtostrf(currentWindDirection, 3, 0, floatString);
+        buffer[0] = '\0';
+        strcat(buffer, floatString);
+        setDisplayLine(11, buffer);
 
       }
 
@@ -646,7 +699,7 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           setDisplayLine(0, "OutTm");
-          dtostrf(AM2315_Temperature * 1.8 + 32.0, 5, 1, floatString);
+          dtostrf(SHT30_Temperature * 1.8 + 32.0, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           setDisplayLine(1, buffer);
@@ -654,7 +707,7 @@ void updateDisplay(int displayMode)
 
 
           setDisplayLine(2, "OutHm");
-          dtostrf(AM2315_Humidity, 5, 1, floatString);
+          dtostrf(SHT30_Humidity, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(3, buffer);
@@ -662,14 +715,14 @@ void updateDisplay(int displayMode)
           //updateAllWeatherVariables();
           buffer[0] = '\0';
           setDisplayLine(4,  "InTmp");
-          dtostrf(BMP180_Temperature * 1.8 + 32.0, 5, 1, floatString);
+          dtostrf(BMP280_Temperature * 1.8 + 32.0, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           setDisplayLine(5, buffer);
           buffer[0] = '\0';
 
           setDisplayLine(6, "BPres");
-          dtostrf((BMP180_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
+          dtostrf((BMP280_Pressure / 1000.0) * 0.29529980165, 5, 2, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "in");
           setDisplayLine(7, buffer);
@@ -708,6 +761,11 @@ void updateDisplay(int displayMode)
           setDisplayLine(15, buffer);
 
 
+          buffer[0] = '\0';
+          setDisplayLine(16, "Sun");
+          dtostrf(TSL2591_Lux, 3, 0, floatString);
+          strcat(buffer, floatString);
+          setDisplayLine(17, buffer);
 
 
           /*           OutTemp:  OutHum:
@@ -726,14 +784,14 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           setDisplayLine(0, "OutTm");
-          dtostrf(AM2315_Temperature, 5, 1, floatString);
+          dtostrf(SHT30_Temperature, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           setDisplayLine(1, buffer);
           buffer[0] = '\0';
 
           setDisplayLine(2, "OutHm");
-          dtostrf(AM2315_Humidity, 5, 1, floatString);
+          dtostrf(SHT30_Humidity, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(3, buffer);
@@ -741,14 +799,14 @@ void updateDisplay(int displayMode)
           //updateAllWeatherVariables();
           buffer[0] = '\0';
           setDisplayLine(4, "InTmp");
-          dtostrf(BMP180_Temperature, 5, 1, floatString);
+          dtostrf(BMP280_Temperature, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           setDisplayLine(5, buffer);
           buffer[0] = '\0';
 
           setDisplayLine(6, "BPres");
-          dtostrf(BMP180_Pressure / 100.0, 4, 1, floatString);
+          dtostrf(BMP280_Pressure / 100.0, 4, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "k");
           setDisplayLine(7, buffer);
@@ -789,14 +847,28 @@ void updateDisplay(int displayMode)
           setDisplayLine(15, buffer);
 
 
+
+          buffer[0] = '\0';
+          setDisplayLine(16, "Sun");
+          dtostrf(TSL2591_Lux, 3, 0, floatString);
+          strcat(buffer, floatString);
+          setDisplayLine(17, buffer);
+
         }
-        // display date and time
+ // display date and time
+        char floatString[15];
         buffer[0] = '\0';
         strcat(buffer, currentTimeString.c_str());
-        setDisplayLine(16, buffer);
+        setDisplayLine(18, buffer);
+        setDisplayLine(19, "");
         String airQual;
-        airQual = " Air Qual " + reportAirQuality(currentAirQuality);
-        setDisplayLine(17, const_cast<char*>(airQual.c_str()) );
+        airQual =  reportAirQuality(currentAirQuality);
+        setDisplayLine(20, const_cast<char*>(airQual.c_str()) );
+        dtostrf(currentWindDirection, 3, 0, floatString);
+        buffer[0] = '\0';
+        strcat(buffer, "AQ:");
+        strcat(buffer, floatString);
+        setDisplayLine(21, buffer);
 
       }
       break;
@@ -811,7 +883,7 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           setDisplayLine(0, "OutTm");
-          dtostrf(AM2315_Temperature * 1.8 + 32.0, 5, 1, floatString);
+          dtostrf(SHT30_Temperature * 1.8 + 32.0, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "F");
           setDisplayLine(1, buffer);
@@ -819,7 +891,7 @@ void updateDisplay(int displayMode)
 
 
           setDisplayLine(2, "OutHm");
-          dtostrf(AM2315_Humidity, 5, 1, floatString);
+          dtostrf(SHT30_Humidity, 5, 1, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(3, buffer);
@@ -870,14 +942,14 @@ void updateDisplay(int displayMode)
 
           buffer[0] = '\0';
           setDisplayLine(0, "OutTm");
-          dtostrf(AM2315_Temperature, 6, 2, floatString);
+          dtostrf(SHT30_Temperature, 6, 2, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "C");
           setDisplayLine(1, buffer);
           buffer[0] = '\0';
 
           setDisplayLine(2, "OutHm");
-          dtostrf(AM2315_Humidity, 6, 2, floatString);
+          dtostrf(SHT30_Humidity, 6, 2, floatString);
           strcat(buffer, floatString);
           strcat(buffer, "%");
           setDisplayLine(3, buffer);
@@ -990,6 +1062,9 @@ void writeAllDisplayLines(int DisplayMode)
     case DISPLAY_TRYING_AP:
     case DISPLAY_FAILING_AP:
     case DISPLAY_SDL2PUBNUBCODE:
+    case DISPLAY_TRYING_SMARTCONFIG:
+    case DISPLAY_TRYING_WPS:
+
     case DISPLAY_FAILED_RECONNECT:
 
 
@@ -1041,6 +1116,7 @@ void writeAllDisplayLines(int DisplayMode)
 
     case DISPLAY_WXLINK:
       {
+
         int textSize = 1;
         display.setTextSize(textSize);
         display.setTextColor(WHITE);
@@ -1059,6 +1135,10 @@ void writeAllDisplayLines(int DisplayMode)
       break;
     case DISPLAY_WEATHER_SMALL:
       {
+#ifdef OLEDEXPERIMENT
+        xSemaphoreGive( xSemaphoreOLEDLoopUpdate);   // release semaphore to take sample if needed
+        xSemaphoreTake( xSemaphoreOLEDLoopUpdate, portMAX_DELAY );// grab it again
+#endif
         int textSize = 1;
         display.setTextSize(textSize);
         display.setTextColor(WHITE);
@@ -1079,6 +1159,10 @@ void writeAllDisplayLines(int DisplayMode)
     case DISPLAY_WEATHER_MEDIUM:
 
       {
+#ifdef OLEDEXPERIMENT
+        xSemaphoreGive( xSemaphoreOLEDLoopUpdate);   // release semaphore to take sample if needed
+        xSemaphoreTake( xSemaphoreOLEDLoopUpdate, portMAX_DELAY );// grab it again
+#endif
         int textSize = 2;
         display.setTextSize(textSize);
         display.setTextColor(WHITE);
@@ -1114,7 +1198,7 @@ void writeAllDisplayLines(int DisplayMode)
 
             }
           }
-          delay(1800);
+          vTaskDelay(1800 / portTICK_PERIOD_MS);
         }
 
       }
@@ -1126,12 +1210,16 @@ void writeAllDisplayLines(int DisplayMode)
 
 
       {
+#ifdef OLEDEXPERIMENT
+        xSemaphoreGive( xSemaphoreOLEDLoopUpdate);   // release semaphore to take sample if needed
+        xSemaphoreTake( xSemaphoreOLEDLoopUpdate, portMAX_DELAY );// grab it again
+#endif
         int textSize = 4;
         display.setTextSize(textSize);
         display.setTextColor(WHITE);
         int i;
 
-        for (i = 0; i < 10; i++)
+        for (i = 0; i < 11; i++)
         {
           display.clearDisplay();
           int j;
@@ -1144,7 +1232,7 @@ void writeAllDisplayLines(int DisplayMode)
             else
               display.setTextSize(4);
 
-            if (i == 8)
+            if ((i == 9) || (i == 10))
               display.setTextSize(2);
 
             display.println(displayLines[i * 2 + j]);
@@ -1170,7 +1258,7 @@ void writeAllDisplayLines(int DisplayMode)
 
             }
           }
-          delay(1800);
+          vTaskDelay(1800 / portTICK_PERIOD_MS);
         }
 
       }
@@ -1181,6 +1269,10 @@ void writeAllDisplayLines(int DisplayMode)
 
 
       {
+#ifdef OLEDEXPERIMENT
+        xSemaphoreGive( xSemaphoreOLEDLoopUpdate);   // release semaphore to take sample if needed
+        xSemaphoreTake( xSemaphoreOLEDLoopUpdate, portMAX_DELAY );// grab it again
+#endif
         int textSize = 4;
         display.setTextSize(textSize);
         display.setTextColor(WHITE);
@@ -1225,7 +1317,8 @@ void writeAllDisplayLines(int DisplayMode)
 
             }
           }
-          delay(900);
+          vTaskDelay(900 / portTICK_PERIOD_MS);
+
         }
 
       }
@@ -1576,4 +1669,3 @@ void OLEDDisplaySetup()   {
 
   }
 */
-

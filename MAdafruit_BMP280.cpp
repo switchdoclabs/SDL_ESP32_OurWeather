@@ -36,7 +36,7 @@ bool Adafruit_BMP280::begin(uint8_t a) {
 
  
     // i2c
-    Wire.begin(5,4);
+    Wire.begin();
 
   if (read8(BMP280_REGISTER_CHIPID) != 0x58)
     return false;
@@ -251,4 +251,3 @@ float Adafruit_BMP280::readAltitude(float seaLevelhPa) {
 
   return altitude;
 }
-

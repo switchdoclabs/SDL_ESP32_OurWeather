@@ -1,8 +1,8 @@
 //
 //   SDL_Arduino_INA3221 Library
 //   SDL_Arduino_INA3221.cpp Arduino code - runs in continuous mode
-//   Version 1.1
-//   SwitchDoc Labs   January 31, 2015
+//   Version 1.2
+//   SwitchDoc Labs   September 2019
 //
 //
 
@@ -11,7 +11,7 @@
 /*
     Initial code from INA219 code (Basically just a core structure left)
     @author   K.Townsend (Adafruit Industries)
-  @license  BSD (see BSDlicense.txt)
+	@license  BSD (see BSDlicense.txt)
 */
 
 #if ARDUINO >= 100
@@ -112,8 +112,8 @@ void SDL_Arduino_INA3221::begin() {
   // Set chip to known config values to start
   INA3221SetConfig();
     
-    Serial.print("shut resistor="); Serial.println(INA3221_shuntresistor);
-        Serial.print("address="); Serial.println(INA3221_i2caddr);
+   // Serial.print("shut resistor="); Serial.println(INA3221_shuntresistor);
+       // Serial.print("address="); Serial.println(INA3221_i2caddr);
     
 }
 
@@ -178,4 +178,18 @@ float SDL_Arduino_INA3221::getCurrent_mA(int channel) {
     float valueDec = getShuntVoltage_mV(channel)/INA3221_shuntresistor;
   
   return valueDec;
+}
+
+
+/**************************************************************************/
+/*! 
+    @brief  Gets the Manufacturers ID
+*/
+/**************************************************************************/
+int SDL_Arduino_INA3221::getManufID()
+{
+  uint16_t value;
+  wireReadRegister(0xFE, &value);
+  return value;
+
 }

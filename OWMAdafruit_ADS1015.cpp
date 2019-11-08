@@ -110,7 +110,7 @@ Adafruit_ADS1115::Adafruit_ADS1115(uint8_t i2cAddress)
 */
 /**************************************************************************/
 void Adafruit_ADS1015::begin() {
-  Wire.begin(5, 4);
+  Wire.begin();
 }
 
 /**************************************************************************/
@@ -367,8 +367,3 @@ int16_t Adafruit_ADS1015::getLastConversionResults()
     return (int16_t)res;
   }
 }
-
-
-
-
-

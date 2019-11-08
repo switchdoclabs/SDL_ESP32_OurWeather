@@ -1,8 +1,8 @@
 //
 //   SDL_Arduino_INA3221 Library
 //   SDL_Arduino_INA3221.cpp Arduino code - runs in continuous mode
-//   Version 1.1
-//   SwitchDoc Labs   January 31, 2015
+//   Version 1.2
+//   SwitchDoc Labs   September 2019
 //
 //
 
@@ -10,9 +10,9 @@
 /*! 
     Initial code from INA219 code (Basically just a core structure left)
     @author   K. Townsend (Adafruit Industries)
-  @license  BSD (see BSDlicense.txt)
-  
-  */
+	@license  BSD (see BSDlicense.txt)
+	
+	*/
 /**************************************************************************/
 
 #if ARDUINO >= 100
@@ -36,11 +36,11 @@
     #define INA3221_REG_CONFIG                      (0x00)
     /*---------------------------------------------------------------------*/
     #define INA3221_CONFIG_RESET                    (0x8000)  // Reset Bit
-  
+	
     #define INA3221_CONFIG_ENABLE_CHAN1             (0x4000)  // Enable Channel 1
     #define INA3221_CONFIG_ENABLE_CHAN2             (0x2000)  // Enable Channel 2
     #define INA3221_CONFIG_ENABLE_CHAN3             (0x1000)  // Enable Channel 3
-  
+	
     #define INA3221_CONFIG_AVG2                     (0x0800)  // AVG Samples Bit 2 - See table 3 spec
     #define INA3221_CONFIG_AVG1                     (0x0400)  // AVG Samples Bit 1 - See table 3 spec
     #define INA3221_CONFIG_AVG0                     (0x0200)  // AVG Samples Bit 0 - See table 3 spec
@@ -80,8 +80,8 @@ class SDL_Arduino_INA3221{
   float getBusVoltage_V(int channel);
   float getShuntVoltage_mV(int channel);
   float getCurrent_mA(int channel);
+  int getManufID();
 
- private:
   uint8_t INA3221_i2caddr;
   float INA3221_shuntresistor;
 

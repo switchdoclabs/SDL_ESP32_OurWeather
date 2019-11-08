@@ -242,7 +242,7 @@ int enableDisableSDL2PubNub(String command)
     {
 
 
-      writeEEPROMState();
+      writePreferences();
 
 
 
@@ -311,7 +311,7 @@ int setThunderBoardParams(String command)
           
         setAS3935Parameters();
 
-        writeEEPROMState();
+        writePreferences();
       }
 
 
@@ -321,5 +321,3 @@ int setThunderBoardParams(String command)
   }
   return 0;
 }
-
-

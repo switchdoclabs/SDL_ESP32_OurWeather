@@ -6,6 +6,7 @@
 //
 
 
+void updateDisplay(int displayMode);
 
 
 int ledControl(String command) {
@@ -42,7 +43,7 @@ int resetWiFiAccessPoint(String command)
   {
     WPassword = "XXX";
     Wssid = "XXX";
-    writeEEPROMState();
+    writePreferences();
     return 1;
   }
   else
@@ -63,7 +64,7 @@ int resetOurWeather(String command) {
   if (command == adminPassword)
   {
 
-    invalidateEEPROMState();
+    resetPreferences();
 
     system_restart();
 
@@ -89,7 +90,7 @@ int setAdminPassword(String command)
   if (oldPassword == adminPassword)
   {
     adminPassword = newPassword;
-    writeEEPROMState();
+    writePreferences();
     return 1;
   }
   else
@@ -121,7 +122,7 @@ int setWUSID(String command)
   if (sentPassword == adminPassword)
   {
     WeatherUnderground_StationID = WUSID;
-    writeEEPROMState();
+    writePreferences();
     return 1;
   }
   else
@@ -147,7 +148,7 @@ int setWUKEY(String command)
   if (sentPassword == adminPassword)
   {
     WeatherUnderground_StationKey = WUKEY;
-    writeEEPROMState();
+    writePreferences();
 
     return 1;
   }
@@ -175,8 +176,9 @@ int setBAKEY(String command)
   if (sentPassword == adminPassword)
   {
     BlynkAuthCode = BAKEY;
-    writeEEPROMState();
+    writePreferences();
     startBlynk();
+    ESP.restart();
     return 1;
   }
   else
@@ -191,7 +193,7 @@ int rebootOurWeather(String command) {
 
 
 
-  system_restart();
+  ESP.restart();
   // ESP.reset();
   delay(10000);
 
@@ -223,10 +225,9 @@ int setDateTime(String command)
   {
     if ((_time.length() > 0) && (_date.length() > 0))
     {
-      RtcDateTime compiled = RtcDateTime(_date.c_str(), _time.c_str());
+      //RtcDateTime compiled = RtcDateTime(_date.c_str(), _time.c_str());
       Serial.println("Updating DateTime in RTC");
-      Serial.println(compiled);
-      Rtc.SetDateTime(compiled);
+
     }
     else
     {
@@ -240,6 +241,7 @@ int setDateTime(String command)
 }
 
 
+void writeToBlynkStatusTerminal(String statement);
 
 // FOTA update commands
 
@@ -247,22 +249,72 @@ int setDateTime(String command)
 int updateOurWeather(String command)
 {
 
+  WiFiClient client;
   Serial.println("updateOurWeather");
   Serial.print("Command =");
   Serial.println(command);
+
+  // grab the semaphore to stop reading and display
+  xSemaphoreTake( xSemaphoreReadSensor, 10);
+
+  String newFWVersion = "XX";
+
   if (command == adminPassword)
   {
     updateDisplay(DISPLAY_UPDATING);
     delay(5000);
+    String fwVersionURL;
+    fwVersionURL = "http://www.switchdoc.com/bin/CurrentFirmware.html";
+    // Get the values for the update software
 
-    updateDisplay(DISPLAY_UPDATE_FINISHED);
-    t_httpUpdate_return ret = ESPhttpUpdate.update("www.switchdoc.com", 80, "/OurWeatherUpdater.php", WEATHERPLUSESP8266VERSION);
+    HTTPClient httpClient;
+    httpClient.begin( fwVersionURL );
+    int httpCode = httpClient.GET();
+    if ( httpCode == 200 ) {
+      newFWVersion = httpClient.getString();
+
+      Serial.print( "Current firmware version: " );
+      Serial.println( WEATHERPLUSESP32VERSION );
+      Serial.print( "Available firmware version: " );
+      Serial.println( newFWVersion );
+
+      if (UseBlynk)
+      {
+        writeToBlynkStatusTerminal("\nCurrent firmware version: ");
+        writeToBlynkStatusTerminal(WEATHERPLUSESP32VERSION);
+        writeToBlynkStatusTerminal("\nAvailable firmware version: ");
+        writeToBlynkStatusTerminal(newFWVersion);
+      }
+
+
+      if ( newFWVersion != WEATHERPLUSESP32VERSION ) {
+        Serial.println( "Preparing to update" );
+        if (UseBlynk)
+        {
+          writeToBlynkStatusTerminal( "\nPreparing to update" );
+        }
+
+
+      }
+      else
+      { xSemaphoreGive( xSemaphoreRESTCommand);
+        return 2;
+      }
+    }
+
+
+    //t_httpUpdate_return ret = httpUpdate.update("www.switchdoc.com", 80, "/OurWeatherUpdater.php", WEATHERPLUSESP32VERSION);
+    String fwImageURL;
+    newFWVersion.trim();
+    fwImageURL = "http://www.switchdoc.com/bin/" + newFWVersion + ".bin";
+    Serial.println(fwImageURL);
+    t_httpUpdate_return ret = httpUpdate.update(client, fwImageURL);
     switch (ret) {
       case HTTP_UPDATE_FAILED:
         Serial.println("[update] Update failed.");
         updateDisplay(DISPLAY_NO_UPDATE_FAILED);
         delay(5000);
-
+        xSemaphoreGive( xSemaphoreRESTCommand);
         return 1;
 
         break;
@@ -270,12 +322,14 @@ int updateOurWeather(String command)
         Serial.println("[update] Update no Updates.");
         updateDisplay(DISPLAY_NO_UPDATE_AVAILABLE);
         delay(5000);
+        xSemaphoreGive( xSemaphoreRESTCommand);
         return 2;
         break;
       case HTTP_UPDATE_OK:
 
         Serial.println("[update] Update ok."); // may not called we reboot the ESP
-
+        updateDisplay(DISPLAY_UPDATE_FINISHED);
+        xSemaphoreGive( xSemaphoreRESTCommand);
         return 3;
         break;
     }
@@ -283,6 +337,7 @@ int updateOurWeather(String command)
 
 
   }
+  xSemaphoreGive( xSemaphoreRESTCommand);
   return 0;
 
 
@@ -323,7 +378,7 @@ int enableTwitterControl(String command) {
 int weatherSmallControl(String command) {
 
   WeatherDisplayMode = DISPLAY_WEATHER_SMALL;
-  writeEEPROMState();
+  writePreferences();
 
   return 1;
 }
@@ -332,7 +387,7 @@ int weatherSmallControl(String command) {
 int weatherMediumControl(String command) {
 
   WeatherDisplayMode = DISPLAY_WEATHER_MEDIUM;
-  writeEEPROMState();
+  writePreferences();
   return 1;
 }
 
@@ -341,7 +396,7 @@ int weatherMediumControl(String command) {
 int weatherLargeControl(String command) {
 
   WeatherDisplayMode = DISPLAY_WEATHER_LARGE;
-  writeEEPROMState();
+  writePreferences();
   return 1;
 }
 
@@ -350,7 +405,7 @@ int weatherLargeControl(String command) {
 int weatherDemoControl(String command) {
 
   WeatherDisplayMode = DISPLAY_WEATHER_DEMO;
-  writeEEPROMState();
+  writePreferences();
   return 1;
 }
 
@@ -361,7 +416,7 @@ int englishUnitControl(String command) {
   EnglishOrMetric = 0;
   writeToBlynkStatusTerminal("Units set to English");
   Blynk.virtualWrite(V8,  "English");
-  writeEEPROMState();
+  writePreferences();
   return 1;
 }
 
@@ -371,7 +426,7 @@ int metricUnitControl(String command) {
   EnglishOrMetric = 1;
   writeToBlynkStatusTerminal("Units set to Metric");
   Blynk.virtualWrite(V8,  "English");
-  writeEEPROMState();
+  writePreferences();
   return 1;
 }
 
