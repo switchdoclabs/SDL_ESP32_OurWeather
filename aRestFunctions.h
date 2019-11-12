@@ -41,8 +41,8 @@ int resetWiFiAccessPoint(String command)
 
   if (command == adminPassword)
   {
-    WPassword = "XXX";
-    Wssid = "XXX";
+    WiFi_psk = "";
+    WiFi_SSID = "";
     writePreferences();
     return 1;
   }

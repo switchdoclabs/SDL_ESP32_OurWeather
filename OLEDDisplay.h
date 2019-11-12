@@ -102,7 +102,7 @@ void updateDisplay(int displayMode)
       strcpy(buffer, "Ver: ");
       strcat(buffer, WEATHERPLUSESP32VERSION);
 
-      setDisplayLine(0,  "OurWeather V2 Booting");
+      setDisplayLine(0,  "OurWeather V2 Boot");
       setDisplayLine(1, buffer);
       setDisplayLine(2, "");
       setDisplayLine(3, "");
@@ -680,7 +680,7 @@ void updateDisplay(int displayMode)
         String airQual;
         airQual =  "AQ:" + reportAirQuality(currentAirQuality);
         setDisplayLine(10, const_cast<char*>(airQual.c_str()) );
-        dtostrf(currentWindDirection, 3, 0, floatString);
+        dtostrf(currentAirQualitySensor, 3, 0, floatString);
         buffer[0] = '\0';
         strcat(buffer, floatString);
         setDisplayLine(11, buffer);
@@ -762,7 +762,7 @@ void updateDisplay(int displayMode)
 
 
           buffer[0] = '\0';
-          setDisplayLine(16, "Sun");
+          setDisplayLine(16, "SunLt");
           dtostrf(TSL2591_Lux, 3, 0, floatString);
           strcat(buffer, floatString);
           setDisplayLine(17, buffer);
@@ -849,7 +849,7 @@ void updateDisplay(int displayMode)
 
 
           buffer[0] = '\0';
-          setDisplayLine(16, "Sun");
+          setDisplayLine(16, "SunLt");
           dtostrf(TSL2591_Lux, 3, 0, floatString);
           strcat(buffer, floatString);
           setDisplayLine(17, buffer);
@@ -864,7 +864,7 @@ void updateDisplay(int displayMode)
         String airQual;
         airQual =  reportAirQuality(currentAirQuality);
         setDisplayLine(20, const_cast<char*>(airQual.c_str()) );
-        dtostrf(currentWindDirection, 3, 0, floatString);
+        dtostrf(currentAirQualitySensor, 3, 0, floatString);
         buffer[0] = '\0';
         strcat(buffer, "AQ:");
         strcat(buffer, floatString);
