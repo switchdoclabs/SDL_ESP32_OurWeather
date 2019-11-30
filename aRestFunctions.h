@@ -349,7 +349,7 @@ int updateOurWeather(String command)
     //t_httpUpdate_return ret = httpUpdate.update("www.switchdoc.com", 80, "/OurWeatherUpdater.php", WEATHERPLUSESP32VERSION);
     String fwImageURL;
     newFWVersion.trim();
-    fwImageURL = "http://www.switchdoc.com/bin/" + newFWVersion + ".bin";
+    fwImageURL = "http://www.switchdoc.com/bin/OW-" + newFWVersion + ".bin";
     Serial.println(fwImageURL);
     t_httpUpdate_return ret = httpUpdate.update(client, fwImageURL);
     switch (ret) {
