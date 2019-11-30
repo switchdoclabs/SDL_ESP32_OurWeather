@@ -193,3 +193,17 @@ int SDL_Arduino_INA3221::getManufID()
   return value;
 
 }
+
+
+/**************************************************************************/
+/*! 
+    @brief  Gets the Manufacturers ID
+*/
+/**************************************************************************/
+int SDL_Arduino_INA3221::getDeviceID()
+{
+  uint16_t value;
+  wireReadRegister(0xFF, &value);
+  return value;
+
+}

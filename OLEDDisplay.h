@@ -237,6 +237,108 @@ void updateDisplay(int displayMode)
       }
       break;
 
+
+    case DISPLAY_DEVICEPRESENT:
+
+      {
+        setDisplayLine(0, "---Devices Present---");
+
+        String myBuffer;
+        myBuffer = "SAP: ";
+        if (SunAirPlus_Present == true)
+        {
+          myBuffer = myBuffer + "X ";
+        }
+        else
+        {
+          myBuffer = myBuffer + "- ";
+        }
+        myBuffer = myBuffer + "WX: ";
+        if (WXLink_Present == true)
+        {
+          myBuffer = myBuffer + "X";
+        }
+        else
+        {
+          myBuffer = myBuffer + "-";
+        }
+        strcpy(buffer, myBuffer.c_str());
+        setDisplayLine(1, buffer );
+
+        myBuffer = "AQ: ";
+        if (AirQualityPresent == true)
+        {
+          myBuffer = myBuffer + "+ ";
+        }
+        else
+        {
+          myBuffer = myBuffer + "- ";
+        }
+        myBuffer = myBuffer + "BMP: ";
+        if (BMP280Found == true)
+        {
+          myBuffer = myBuffer + "+";
+        }
+        else
+        {
+          myBuffer = myBuffer + "-";
+        }
+        strcpy(buffer, myBuffer.c_str());
+        setDisplayLine(2, buffer );
+
+        myBuffer = "SUNLT: ";
+        if (TSL2591_Present == true)
+        {
+          myBuffer = myBuffer + "+ ";
+        }
+        else
+        {
+          myBuffer = myBuffer + "- ";
+        }
+
+        myBuffer = myBuffer + "SHT30: ";
+        if (SHT30_Present == true)
+        {
+          myBuffer = myBuffer + "+";
+        }
+        else
+        {
+          myBuffer = myBuffer + "-";
+        }
+
+
+        strcpy(buffer, myBuffer.c_str());
+        setDisplayLine(3, buffer );
+
+        myBuffer = "Lhtng: ";
+        if (AS3935Present == true)
+        {
+          myBuffer = myBuffer + "+ ";
+        }
+        else
+        {
+          myBuffer = myBuffer + "- ";
+        }
+
+        myBuffer = myBuffer + "HDC: ";
+        if (HDC1080_Present == true)
+        {
+          myBuffer = myBuffer + "+";
+        }
+        else
+        {
+          myBuffer = myBuffer + "-";
+        }
+
+
+        strcpy(buffer, myBuffer.c_str());
+        setDisplayLine(4, buffer );
+
+        
+
+
+      }
+      break;
     case DISPLAY_SDL2PUBNUBCODE:
 
       {
@@ -855,7 +957,7 @@ void updateDisplay(int displayMode)
           setDisplayLine(17, buffer);
 
         }
- // display date and time
+        // display date and time
         char floatString[15];
         buffer[0] = '\0';
         strcat(buffer, currentTimeString.c_str());
@@ -1058,6 +1160,7 @@ void writeAllDisplayLines(int DisplayMode)
 
       break;
     case DISPLAY_IPDISPLAY:
+
     case DISPLAY_ACCESSPOINT:
     case DISPLAY_TRYING_AP:
     case DISPLAY_FAILING_AP:
@@ -1098,6 +1201,7 @@ void writeAllDisplayLines(int DisplayMode)
     case DISPLAY_SUNAIRPLUS:
     case DISPLAY_LIGHTNING_STATUS:
     case DISPLAY_LIGHTNING_DISPLAY:
+    case DISPLAY_DEVICEPRESENT:
 
       {
         int textSize = 1;

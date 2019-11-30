@@ -7,8 +7,8 @@
 //
 
 
-#define WEATHERPLUSESP32VERSION "050"
-// 50P-H
+#define WEATHERPLUSESP32VERSION "051"
+
 #define CONTROLLERBOARD "V2"
 
 #define WEATHERPLUSPUBNUBPROTOCOL "OURWEATHER050"
@@ -24,7 +24,7 @@
 
 
 
-#define DEFAULTCLOCKTIMEOFFSETTOUTC -25200
+#define DEFAULTCLOCKTIMEOFFSETTOUTC -21600
 
 #define DEBUGBLYNK
 
@@ -92,6 +92,41 @@ bool WiFiPresent = false;
   }
 
 esp_wps_config_t config = WPS_CONFIG_INIT_DEFAULT(ESP_WPS_MODE);
+
+// NeoPixels
+#include "NeoPixelBus.h"
+
+
+const uint16_t PixelCount = 4; // this example assumes 4 pixels, making it smaller will cause a failure
+const uint8_t PixelPin = 21;  // make sure to set this to the correct pin, ignored for Esp8266
+
+#define colorSaturation 128
+
+// three element pixels, in different order and speeds
+NeoPixelBus<NeoRgbwFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
+
+RgbwColor green(colorSaturation, 0, 0, 0);
+RgbwColor red(0, colorSaturation, 0, 0);
+RgbwColor blue(0, 0, colorSaturation, 0);
+RgbwColor white( 0, 0, 0, colorSaturation);
+RgbwColor black(0);
+
+struct MyAnimationState
+{
+  RgbwColor StartingColor;
+  RgbwColor EndingColor;
+};
+
+
+
+/*
+
+  HslColor hslRed(red);
+  HslColor hslGreen(green);
+  HslColor hslBlue(blue);
+  HslColor hslWhite(white);
+  HslColor hslBlack(black);
+*/
 
 
 
@@ -247,6 +282,7 @@ char uuid[]   = WEATHERPLUSPUBNUBPROTOCOL;
 #define DISPLAY_LIGHTNING_DISPLAY 21
 #define DISPLAY_TRYING_SMARTCONFIG 22
 #define DISPLAY_TRYING_WPS 24
+#define DISPLAY_DEVICEPRESENT 25
 
 #define DEBUG
 
@@ -315,6 +351,7 @@ Adafruit_BMP280 bme;
 #define SENSORS_PRESSURE_SEALEVELHPA 1015.00
 float altitude_meters;
 float BMP280_Temperature;
+float BMP280_Humidity;
 float BMP280_Pressure;
 float BMP280_Altitude;
 
@@ -344,6 +381,21 @@ const char *monthName[12] = {
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
+
+
+// HDC1080
+
+#include "ClosedCube_HDC1080.h"
+
+ClosedCube_HDC1080 hdc1080;
+
+float HDC1080_Inside_Temperature;
+float HDC1080_Inside_Humidity;
+
+
+bool HDC1080_Present = false;
+
+
 
 // TSL2591
 
@@ -580,9 +632,6 @@ SDL_RasPiGraphLibrary windDirectionGraph(10, SDL_MODE_LABELS);
 char windSpeedBuffer[150];  // wind speed graph
 char windGustBuffer[150];  // wind speed graph
 char windDirectionBuffer[150];  // wind speed graph
-
-
-
 
 
 // WeatherRack
@@ -978,13 +1027,26 @@ void readSensors()
 
     /* First we get the current temperature from the BMP085 */
     float temperature;
-    temperature = bme.readTemperature();
-    Serial.print("Temperature: ");
-    Serial.print(temperature);
-    Serial.println(" C");
+    float humidity;
+
+    if (HDC1080_Present)
+    {
+      temperature = hdc1080.readTemperature();
+      humidity = hdc1080.readHumidity();
+
+    }
+    else
+    {
+      temperature = bme.readTemperature();
+      Serial.print("Temperature: ");
+      Serial.print(temperature);
+      Serial.println(" C");
+      humidity = 0.0;
+    }
 
 
     BMP280_Temperature = temperature;
+    BMP280_Humidity = humidity;
 
 
 
@@ -1456,6 +1518,10 @@ void readSensors()
   RestDataString += String(as3835_LightningCountSinceBootup);
 
 
+  // HDC1080 Humidity
+  RestDataString += String(BMP280_Humidity, 2) + ",";
+
+
   if (timeElapsed300Seconds > 300000)   // 5 minutes
   {
 
@@ -1637,8 +1703,12 @@ void setup() {
 
   WiFi.persistent(false);
 
+  // this resets all the neopixels to an off state
+  strip.Begin();
+  strip.Show();
+  strip.SetPixelColor(0, blue);
 
-
+  strip.Show();
 
   BMP280Found = false;
   stationName = "";
@@ -1753,6 +1823,17 @@ void setup() {
     1);               // Specific Core
 
 
+  xTaskCreatePinnedToCore(
+    taskPixelCommand,          /* Task function. */
+    "TaskPixelCommand",        /* String with name of task. */
+    10000,            /* Stack size in words. */
+    NULL,             /* Parameter passed as input of the task */
+    3,                /* Priority of the task. */
+    NULL,             /* Task handle. */
+    1);               // Specific Core
+
+
+
 
 #ifdef OLED_Present
   OLEDDisplaySetup();
@@ -1761,13 +1842,13 @@ void setup() {
 
   delay(2000);
 
-  pinMode(32, INPUT_PULLUP);
-  Serial.print("digital Read 32 = ");
-  Serial.println(digitalRead(32));
+  pinMode(25, INPUT_PULLUP);
+  Serial.print("digital Read 25 = ");
+  Serial.println(digitalRead(25.));
 
-  if (digitalRead(32) == 0)
+  if (digitalRead(25) == 0)
   {
-    Serial.println("GPIO32 button down - Invalidating Preferences");
+    Serial.println("GPIO25  down - Invalidating Preferences");
     resetPreferences();
 
   }
@@ -1923,21 +2004,64 @@ void setup() {
 
   // Now do NTP (set's time to 00:00:00 if not present)  January 1, 1970
 
+  Serial.println("--------");
+  Serial.println("NTP Time Fetch");
+  Serial.println("--------");
 
   // changed later with setTimeOffset() ). Additionaly you can specify the
   // update interval (in milliseconds, can be changed using setUpdateInterval() ).
   timeClient.begin();
-  timeClient.forceUpdate();
+  //timeClient.forceUpdate();
 
   timeClient.setTimeOffset(ClockTimeOffsetToUTC);
   if (WiFiPresent == true)
   {
     timeClient.setUpdateInterval(3600000);
+    //
     timeClient.update();
   }
   time_t t;
   if (WiFiPresent == true)
   {
+    /* Serial.print("Getting epochTime = ");
+      t = timeClient.getEpochTime();
+      Serial.println(t);
+      if (t < 2000)
+      {
+       // Try again to update
+       timeClient.forceUpdate();
+
+       Serial.print("Getting epochTime Try 2= ");
+       t = timeClient.getEpochTime();
+       Serial.println(t);
+
+       // and again
+       if (t < 2000)
+       {
+         timeClient.forceUpdate();
+         Serial.print("Getting epochTime Try 3= ");
+         t = timeClient.getEpochTime();
+         Serial.println(t);
+
+       }
+
+      }
+    */
+    int timeout;
+    timeout = 0;
+    while (!timeClient.update()) {
+      timeClient.forceUpdate();
+      timeout++;
+      if (timeout > 1000) {
+        Serial.println("NTP Timeout - time set to default");
+        break;
+      }
+
+
+    }
+
+    Serial.print("NTP timeout count = ");
+    Serial.println(timeout);
     Serial.print("Getting epochTime = ");
     t = timeClient.getEpochTime();
     Serial.println(t);
@@ -2055,6 +2179,7 @@ void setup() {
   rest.function("setAdminPassword",   setAdminPassword);
   //rest.function("rebootOurWeather",   rebootOurWeather);
   rest.function("setDateTime",   setDateTime);
+  rest.function("setUTCOffset", setUTCOffset);
   rest.function("resetToDefaults",   resetToDefaults);
 
   rest.function("resetWiFiAccessPoint", resetWiFiAccessPoint);
@@ -2126,10 +2251,12 @@ void setup() {
   // test for SunAirPlus_Present
   SunAirPlus_Present = false;
 
-  int MID = SunAirPlus.getManufID();
+  int MID = SunAirPlus.getDeviceID();
+  Serial.print("SAP MID = ");
+  Serial.println(MID, HEX);
 
 
-  if (MID != 0x5449)
+  if (MID != 0x3220)
   {
     SunAirPlus_Present = false;
     Serial.println("SunAirPlus Not Present");
@@ -2185,7 +2312,8 @@ void setup() {
   int16_t ad0 = adsAirQuality.readADC_SingleEnded(3);
 
 
-
+  Serial.print("ad0- AQS =");
+  Serial.println(ad0);
   currentAirQuality = -1;
   currentAirQualitySensor = 0;
   INTcurrentAirQualitySensor = 0;
@@ -2342,6 +2470,36 @@ void setup() {
     SHT30_Present = false;
   }
 
+
+  // HCD1080
+
+
+  hdc1080.begin(0x40);
+
+  int deviceID;
+  deviceID = hdc1080.readDeviceId();
+
+  if (deviceID == 0x1050)
+  {
+    Serial.println("HDC1080 Found");
+    HDC1080_Present = true;
+  }
+  else
+  {
+    Serial.println("HDC1080 Not Found");
+    HDC1080_Present = false;
+  }
+
+  /*
+    printTandRH(HDC1080_RESOLUTION_8BIT, HDC1080_RESOLUTION_11BIT);
+    printTandRH(HDC1080_RESOLUTION_11BIT, HDC1080_RESOLUTION_11BIT);
+    printTandRH(HDC1080_RESOLUTION_14BIT, HDC1080_RESOLUTION_11BIT);
+    printTandRH(HDC1080_RESOLUTION_8BIT, HDC1080_RESOLUTION_14BIT);
+    printTandRH(HDC1080_RESOLUTION_11BIT, HDC1080_RESOLUTION_14BIT);
+    printTandRH(HDC1080_RESOLUTION_14BIT, HDC1080_RESOLUTION_14BIT);
+  */
+
+
   if (WiFiPresent == true)
   {
 
@@ -2350,7 +2508,7 @@ void setup() {
     Serial.println("PubNub set up");
   }
 
-
+  updateDisplay(DISPLAY_DEVICEPRESENT);
 
   if (UseBlynk == true)
   {
@@ -2387,6 +2545,12 @@ void setup() {
     writeToStatusLine((String)"OurWeather Version V" + (String)WEATHERPLUSESP32VERSION + " Started");
 
     writeToBlynkStatusTerminal((String)"OurWeather Version V" + (String)WEATHERPLUSESP32VERSION + " Started");
+
+    // Print out on OLED
+
+
+
+
     // Print out the presents
     if (SunAirPlus_Present)
     {
@@ -2459,6 +2623,17 @@ void setup() {
     {
       writeToBlynkStatusTerminal("AS3935 ThunderBoard Not Present");
     }
+
+    if (HDC1080_Present)
+    {
+      writeToBlynkStatusTerminal("HDC1080 Present");
+
+    }
+    else
+    {
+      writeToBlynkStatusTerminal("HDC1080 Not Present");
+    }
+
 
 
     if (EnglishOrMetric == 0)

@@ -240,6 +240,49 @@ int setDateTime(String command)
     return 0;
 }
 
+int setUTCOffset(String command)
+{
+
+  String _offset;
+
+  String _password;
+
+  _password = getValue(command, ',', 0);
+
+  _offset = getValue(command, ',', 1);
+
+  Serial.println("command values:");
+  Serial.println(_password);
+  Serial.println(_offset);
+
+
+  if (_password == adminPassword)
+  {
+    if (_offset.length() > 0)
+    {
+
+      Serial.println("Updating UTC Offset");
+      ClockTimeOffsetToUTC = _offset.toInt();
+      
+      writePreferences();
+
+      ESP.restart();
+      //timeClient.forceUpdate();
+      
+
+
+    }
+    else
+    {
+      Serial.println("Not updating UTC Offset");
+      return 2;
+    }
+    return 1;
+  }
+  else
+    return 0;
+
+}
 
 void writeToBlynkStatusTerminal(String statement);
 

@@ -145,7 +145,7 @@
 // Default number of max. exposed functions
 #ifndef NUMBER_FUNCTIONS
   #if defined(__AVR_ATmega1280__) || defined(ESP32) || defined(__AVR_ATmega2560__) || defined(CORE_WILDFIRE) || defined(ESP8266)
-  #define NUMBER_FUNCTIONS 35
+  #define NUMBER_FUNCTIONS 36
   #else
   #define NUMBER_FUNCTIONS 5
   #endif
