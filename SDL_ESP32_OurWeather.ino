@@ -7,6 +7,7 @@
 //
 
 
+
 #define WEATHERPLUSESP32VERSION "053"
 
 #define CONTROLLERBOARD "V2"
@@ -16,7 +17,7 @@
 // define OWDEBUG to print out lots of debugging information for WeatherPlus.
 
 
-#undef OWDEBUG
+#define OWDEBUG
 
 // not implemented as of V053
 
@@ -1228,84 +1229,92 @@ void readSensors()
   {
     // WXLink is PRESENT, take from WXLink
 
-    Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>");
-    Serial.print("WXLastMessageGood =");
-    Serial.println(WXLastMessageGood);
-    Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>");
+    ProtocolID  = buffer[2] / 10;
 
-    if (WXLastMessageGood == true)  // if bad WX Message, don't change
+    // if protocol ID != 3, then not WXLink package
+
+    if (ProtocolID == 3)
     {
 
-      currentWindSpeed = convert4BytesToFloat(buffer, 9);
-      currentWindGust = convert4BytesToFloat(buffer, 21);
 
-      currentWindDirection = convert2BytesToInt(buffer, 7);
+      Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>");
+      Serial.print("WXLastMessageGood =");
+      Serial.println(WXLastMessageGood);
+      Serial.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>");
 
-      float oldRain = rainTotal;
-      rainTotal = convert4BytesToLong(buffer, 17);
-
-      if (oldRain < rainTotal)
+      if (WXLastMessageGood == true)  // if bad WX Message, don't change
       {
-        strcpy(bubbleStatus, "It is Raining\0");
+
+        currentWindSpeed = convert4BytesToFloat(buffer, 9);
+        currentWindGust = convert4BytesToFloat(buffer, 21);
+
+        currentWindDirection = convert2BytesToInt(buffer, 7);
+
+        float oldRain = rainTotal;
+        rainTotal = convert4BytesToLong(buffer, 17);
+
+        if (oldRain < rainTotal)
+        {
+          strcpy(bubbleStatus, "It is Raining\0");
+        }
+
+        windSpeedGraph.add_value(currentWindSpeed);
+        windGustGraph.add_value(currentWindGust);
+        windDirectionGraph.add_value(currentWindDirection);
+
+        windSpeedGraph.getRasPiString(windSpeedBuffer, windSpeedBuffer);
+        windGustGraph.getRasPiString(windGustBuffer, windGustBuffer);
+        windDirectionGraph.getRasPiString(windDirectionBuffer, windDirectionBuffer);
+
+        windSpeedMin = windSpeedGraph.returnMinValue();
+        windSpeedMax = windSpeedGraph.returnMaxValue();
+        windGustMin = windGustGraph.returnMinValue();
+        windGustMax = windGustGraph.returnMaxValue();
+        windDirectionMin = windDirectionGraph.returnMinValue();
+        windDirectionMax = windDirectionGraph.returnMaxValue();
+
+        // Now overwrite outside temp/humidity
+
+        SHT30_Temperature = validateTemperature(convert4BytesToFloat(buffer, 25));
+        SHT30_Humidity = convert4BytesToFloat(buffer, 29);
+
+        // calculate dewpoint
+        dewpoint =  SHT30_Temperature - ((100.0 - SHT30_Humidity) / 5.0);
+
+
+        // set up solar status and message ID for screen
+
+
+        // if WXLINK present, read charge data
+
+
+
+        WXLoadCurrent = convert4BytesToFloat(buffer, 41);
+
+
+        WXBatteryVoltage = convert4BytesToFloat(buffer, 33);
+        WXBatteryCurrent = convert4BytesToFloat(buffer, 37);
+
+        WXSolarPanelVoltage = convert4BytesToFloat(buffer, 45);
+        WXSolarPanelCurrent = convert4BytesToFloat(buffer, 49);
+
+        WXMessageID = convert4BytesToLong(buffer, 57);
+
+        /*   Serial.println("");
+           Serial.print("WXLIPO_Battery Load Voltage:  "); Serial.print(WXBatteryVoltage); Serial.println(" V");
+           Serial.print("WXLIPO_Battery Current:       "); Serial.print(WXBatteryCurrent); Serial.println(" mA");
+           Serial.println("");
+
+           Serial.print("WXSolar Panel Voltage:   "); Serial.print(WXSolarPanelVoltage); Serial.println(" V");
+           Serial.print("WXSolar Panel Current:   "); Serial.print(WXSolarPanelCurrent); Serial.println(" mA");
+           Serial.println("");
+
+           Serial.print("WXLoad Current:   "); Serial.print(WXLoadCurrent); Serial.println(" mA");
+           Serial.println("");
+        */
+
+
       }
-
-      windSpeedGraph.add_value(currentWindSpeed);
-      windGustGraph.add_value(currentWindGust);
-      windDirectionGraph.add_value(currentWindDirection);
-
-      windSpeedGraph.getRasPiString(windSpeedBuffer, windSpeedBuffer);
-      windGustGraph.getRasPiString(windGustBuffer, windGustBuffer);
-      windDirectionGraph.getRasPiString(windDirectionBuffer, windDirectionBuffer);
-
-      windSpeedMin = windSpeedGraph.returnMinValue();
-      windSpeedMax = windSpeedGraph.returnMaxValue();
-      windGustMin = windGustGraph.returnMinValue();
-      windGustMax = windGustGraph.returnMaxValue();
-      windDirectionMin = windDirectionGraph.returnMinValue();
-      windDirectionMax = windDirectionGraph.returnMaxValue();
-
-      // Now overwrite outside temp/humidity
-
-      SHT30_Temperature = validateTemperature(convert4BytesToFloat(buffer, 25));
-      SHT30_Humidity = convert4BytesToFloat(buffer, 29);
-
-      // calculate dewpoint
-      dewpoint =  SHT30_Temperature - ((100.0 - SHT30_Humidity) / 5.0);
-
-
-      // set up solar status and message ID for screen
-
-
-      // if WXLINK present, read charge data
-
-
-
-      WXLoadCurrent = convert4BytesToFloat(buffer, 41);
-
-
-      WXBatteryVoltage = convert4BytesToFloat(buffer, 33);
-      WXBatteryCurrent = convert4BytesToFloat(buffer, 37);
-
-      WXSolarPanelVoltage = convert4BytesToFloat(buffer, 45);
-      WXSolarPanelCurrent = convert4BytesToFloat(buffer, 49);
-
-      WXMessageID = convert4BytesToLong(buffer, 57);
-
-      /*   Serial.println("");
-         Serial.print("WXLIPO_Battery Load Voltage:  "); Serial.print(WXBatteryVoltage); Serial.println(" V");
-         Serial.print("WXLIPO_Battery Current:       "); Serial.print(WXBatteryCurrent); Serial.println(" mA");
-         Serial.println("");
-
-         Serial.print("WXSolar Panel Voltage:   "); Serial.print(WXSolarPanelVoltage); Serial.println(" V");
-         Serial.print("WXSolar Panel Current:   "); Serial.print(WXSolarPanelCurrent); Serial.println(" mA");
-         Serial.println("");
-
-         Serial.print("WXLoad Current:   "); Serial.print(WXLoadCurrent); Serial.println(" mA");
-         Serial.println("");
-      */
-
-
-
 
     }
     else
@@ -2788,15 +2797,15 @@ void loop() {
 
 
   // put your main code here, to run repeatedly:
-/*
-  if (MQTTEnabled == 1)
-  {
-    if (!MQTTclient.connected()) {
-      MQTTreconnect();
-    }
-    MQTTclient.loop();
+  /*
+    if (MQTTEnabled == 1)
+    {
+      if (!MQTTclient.connected()) {
+        MQTTreconnect();
+      }
+      MQTTclient.loop();
 
-  }
+    }
   */
 
   if (UseBlynk)

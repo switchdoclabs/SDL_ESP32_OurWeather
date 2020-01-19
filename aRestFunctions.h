@@ -34,7 +34,7 @@ int setWeatherPlusIDControl(String command) {
 int resetWiFiAccessPoint(String command)
 {
   Serial.print("Command =");
-  Serial.println(command);
+  Serial.println(command); 
 
 
 
@@ -302,7 +302,7 @@ int updateOurWeather(String command)
   Serial.println(command);
 
   // grab the semaphore to stop reading and display
-  xSemaphoreTake( xSemaphoreReadSensor, 10);
+  xSemaphoreTake( xSemaphoreReadSensor, 60);
 
   String newFWVersion = "XX";
 
