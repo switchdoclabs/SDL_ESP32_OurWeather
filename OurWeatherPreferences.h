@@ -30,6 +30,8 @@ void resetPreferences()
 
 }
 
+void readPreferences();
+
 void writePreferences()
 {
   preferences.begin("OWinit", false);
@@ -48,23 +50,29 @@ void writePreferences()
   preferences.putInt("COffsetToUTC", ClockTimeOffsetToUTC);
 
   preferences.putInt("EnglishOrMetric", EnglishOrMetric);
-  preferences.putInt("WeatherDisplayMode", WeatherDisplayMode);
+  preferences.putInt("WDisplayMode", WeatherDisplayMode);
 
   preferences.putFloat("altitude_meters", altitude_meters);
   preferences.putString("adminPassword", adminPassword);
 
-  preferences.putString("WeatherUnderground_StationID", WeatherUnderground_StationID);
-  preferences.putString("WeatherUnderground_StationKey", WeatherUnderground_StationKey);
+  preferences.putString("WU_StationID", WeatherUnderground_StationID);
+  preferences.putString("WU_StationKey", WeatherUnderground_StationKey);
 
-  preferences.putInt("pubNubEnabled", pubNubEnabled);
-  preferences.putString("SDL2PubNubCode", SDL2PubNubCode);
-  preferences.putString("SDL2PubNubCode_Sub", SDL2PubNubCode_Sub);
+  preferences.putInt("MQTTEnabled", MQTTEnabled);
+  preferences.putString("SDL2MQTTServer", SDL2MQTTServer);
+  preferences.putInt("MQTT_Port", SDL2MQTTServer_Port);
+  preferences.putInt("MQTT_Time", SDL2MQTTServer_Time);
 
   preferences.putString("BlynkAuthCode", BlynkAuthCode);
   preferences.putString("as3935_Params", as3935_Params);
 
+  preferences.putInt("WXLinkEnabled", WXLinkEnabled);
+  preferences.putInt("SolarMAXLA", SolarMAXLA);
+  preferences.putInt("SolarMAXLiPo", SolarMAXLiPo);
 
   preferences.end();
+
+
 
 #ifdef OWDEBUG
   Serial.println("----Writing Preferences---");
@@ -95,14 +103,23 @@ void writePreferences()
   Serial.print("BlynkAuthCode:");
   Serial.println(BlynkAuthCode);
 
-  Serial.print("pubNubEnabled=");
-  Serial.println(pubNubEnabled);
-  Serial.print("SDL2PubNubCode=");
-  Serial.println(SDL2PubNubCode);
-  Serial.print("SDL2PubNubCode_Sub=");
-  Serial.println(SDL2PubNubCode_Sub);
+  Serial.print("MQTTEnabled=");
+  Serial.println(MQTTEnabled);
+  Serial.print("SDL2MQTTServer=");
+  Serial.println(SDL2MQTTServer);
+  Serial.print("SDL2MQTTServer_Port=");
+  Serial.println(SDL2MQTTServer_Port);
+  Serial.print("SDL2MQTTServer_Time=");
+  Serial.println(SDL2MQTTServer_Time);
   Serial.print("as3935_Params=");
   Serial.println(as3935_Params);
+
+  Serial.print("WXLink Enabled=");
+  Serial.println(WXLinkEnabled);
+  Serial.print("SolarMAXLA Enabled=");
+  Serial.println(SolarMAXLA);
+  Serial.print("SolarMAXLiPo Enabled=");
+  Serial.println(SolarMAXLiPo);
   Serial.println("--------------------------");
 
 #endif
@@ -112,6 +129,9 @@ void writePreferences()
 
 void readPreferences()
 {
+
+  Serial.print("preferencesfreeentries=");
+  Serial.println(preferences.freeEntries());
   preferences.begin("OWinit", false);
   OLEDOn = preferences.getInt("OLEDOn", 1);
 
@@ -124,27 +144,28 @@ void readPreferences()
 
 
   EnglishOrMetric = preferences.getInt("EnglishOrMetric");
-  WeatherDisplayMode = preferences.getInt("WeatherDisplayMode", DISPLAY_WEATHER_LARGE);
+  WeatherDisplayMode = preferences.getInt("WDisplayMode", DISPLAY_WEATHER_LARGE);
 
   altitude_meters = preferences.getFloat("altitude_meters", 637.0);
   adminPassword = preferences.getString("adminPassword", "admin");
 
-  WeatherUnderground_StationID = preferences.getString("WeatherUnderground_StationID", "");
-  WeatherUnderground_StationKey = preferences.putString("WeatherUnderground_StationKey", "");
+  WeatherUnderground_StationID = preferences.getString("WU_StationID", "");
+  WeatherUnderground_StationKey = preferences.putString("WU_StationKey", "");
 
-  pubNubEnabled = preferences.getInt("pubNubEnabled");
-  SDL2PubNubCode = preferences.getString("SDL2PubNubCode", "XX");
-  SDL2PubNubCode_Sub = preferences.getString("SDL2PubNubCode_Sub", "XX");
+  MQTTEnabled = preferences.getInt("MQTTEnabled", 0);
+  SDL2MQTTServer = preferences.getString("SDL2MQTTServer", "XX");
+  SDL2MQTTServer_Port = preferences.getInt("MQTT_Port", 0);
+  SDL2MQTTServer_Time = preferences.getInt("MQTT_Time", 0);
 
   BlynkAuthCode =   preferences.getString("BlynkAuthCode", "");
-  
+
 #ifdef OWDEBUG
   Serial.print("BlynkAuthCode=");
   Serial.println(BlynkAuthCode);
   Serial.print("BAC Length=");
   Serial.println(BlynkAuthCode.length());
 #endif
-  if (BlynkAuthCode.length() <4)   // Short blynk codes are not valid
+  if (BlynkAuthCode.length() < 4)  // Short blynk codes are not valid
     UseBlynk = false;
   else
     UseBlynk = true;
@@ -152,6 +173,13 @@ void readPreferences()
 
 
   as3935_Params = preferences.getString("as3935_Params", "");
+
+  WXLinkEnabled = preferences.getInt("WXLinkEnabled", 0);
+  SolarMAXLA = preferences.getInt("SolarMAXLA", 0);
+  SolarMAXLiPo = preferences.getInt("SolarMAXLiPo", 0);
+
+
+
 
   preferences.end();
 
@@ -181,14 +209,24 @@ void readPreferences()
   Serial.print("BlynkAuthCode:");
   Serial.println(BlynkAuthCode);
 
-  Serial.print("pubNubEnabled=");
-  Serial.println(pubNubEnabled);
-  Serial.print("SDL2PubNubCode=");
-  Serial.println(SDL2PubNubCode);
-  Serial.print("SDL2PubNubCode_Sub=");
-  Serial.println(SDL2PubNubCode_Sub);
+  Serial.print("MQTTEnabled=");
+  Serial.println(MQTTEnabled);
+  Serial.print("SDL2MQTTServer=");
+  Serial.println(SDL2MQTTServer);
+  Serial.print("SDL2MQTTServer_Port=");
+  Serial.println(SDL2MQTTServer_Port);
+  Serial.print("SDL2MQTTServer_Time=");
+  Serial.println(SDL2MQTTServer_Time);
   Serial.print("as3935_Params=");
   Serial.println(as3935_Params);
+
+  Serial.print("WXLink Enabled=");
+  Serial.println(WXLinkEnabled);
+  Serial.print("SolarMAXLA Enabled=");
+  Serial.println(SolarMAXLA);
+  Serial.print("SolarMAXLiPo Enabled=");
+  Serial.println(SolarMAXLiPo);
+
   Serial.println("--------------------------");
 #endif
 }

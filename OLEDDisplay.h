@@ -334,27 +334,57 @@ void updateDisplay(int displayMode)
         strcpy(buffer, myBuffer.c_str());
         setDisplayLine(4, buffer );
 
-        
+        myBuffer = "SMLA: ";
+        if (SolarMAXLA == 1)
+        {
+          myBuffer = myBuffer + "+ ";
+        }
+        else
+        {
+          myBuffer = myBuffer + "- ";
+        }
+
+        myBuffer = myBuffer + "SMLP: ";
+        if (SolarMAXLiPo == true)
+        {
+          myBuffer = myBuffer + "+";
+        }
+        else
+        {
+          myBuffer = myBuffer + "-";
+        }
+
+
+        strcpy(buffer, myBuffer.c_str());
+        setDisplayLine(5, buffer );
 
 
       }
       break;
-    case DISPLAY_SDL2PUBNUBCODE:
+    case DISPLAY_SDL2MQTTServer:
 
       {
-        if (pubNubEnabled == 1)
+        if (MQTTEnabled == 1)
         {
-          setDisplayLine(0, "Alexa Enabled");
-          setDisplayLine(1, "Pubnub Publish Code:");
+          setDisplayLine(0, "MQTT Enabled");
+          setDisplayLine(1, "MQTT Server:");
           buffer[0] = '\0';
-          strcpy(buffer, SDL2PubNubCode.c_str() );
+          strcpy(buffer, SDL2MQTTServer.c_str() );
           setDisplayLine(2, buffer);
-          setDisplayLine(3, "");
-
+          String tempString;
+          tempString = "MQTT Port:"+ String(SDL2MQTTServer_Port);
+          buffer[0] = '\0';
+          strcpy(buffer, tempString.c_str() );
+          setDisplayLine(3, buffer);
+          tempString = "MQTT Time:"+ String(SDL2MQTTServer_Time);
+          buffer[0] = '\0';
+          strcpy(buffer, tempString.c_str() );
+          setDisplayLine(4, buffer);
+          
         }
         else
         {
-          setDisplayLine(0, "Alexa Disabled");
+          setDisplayLine(0, "MQTT Disabled");
           setDisplayLine(1, "");
           setDisplayLine(2, "");
           setDisplayLine(3, "");
@@ -1164,7 +1194,7 @@ void writeAllDisplayLines(int DisplayMode)
     case DISPLAY_ACCESSPOINT:
     case DISPLAY_TRYING_AP:
     case DISPLAY_FAILING_AP:
-    case DISPLAY_SDL2PUBNUBCODE:
+    case DISPLAY_SDL2MQTTServer:
     case DISPLAY_TRYING_SMARTCONFIG:
     case DISPLAY_TRYING_WPS:
 

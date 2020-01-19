@@ -57,6 +57,66 @@ void taskReadWXLink( void * parameter)
 }
 
 
+void taskSendMQTT( void * parameter)
+{
+  // Enter RTOS Task Loop
+  for (;;)  {
+
+    if (uxSemaphoreGetCount( xSemaphoreSendMQTT ) > 0)
+    {
+
+
+      // send data up to MQTT
+
+      if (MQTTEnabled == 1)
+      {
+
+        if (!MQTTclient.connected()) {
+          MQTTreconnect();
+        }
+        MQTTclient.loop();
+
+        String AddString;
+        
+  
+ 
+      AddString = "\"stationname\": ";
+      AddString += stationName;
+      AddString +=  ", \"softwareversion\": ";
+      AddString += WEATHERPLUSESP32VERSION;
+      AddString += ", \"hardware\": ";
+      AddString += HARDWARE;
+      AddString += ", \"Controllerboard\": ";
+      AddString += "V2", true;
+      AddString += ", \"connected\": true";
+
+        //String SendString = "{"\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
+        String SendString = "{"+AddString+" ,\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
+
+        // publish it
+
+
+
+        Serial.println("RTOS Task Sending MQTT Packet");
+
+        Serial.println(SendString);
+        int result;
+        result = MQTTclient.publish("OurWeather", SendString.c_str());
+        Serial.print("MQTT publish result=");
+        Serial.println(result);
+      }
+    }
+    int MQTTdelay;
+    MQTTdelay = SDL2MQTTServer_Time * 1000;
+    if (MQTTdelay < 60 * 1000)
+      MQTTdelay = 60* 1000;   // rate limit to 60 sec
+
+    vTaskDelay(MQTTdelay / portTICK_PERIOD_MS);
+
+  }
+
+}
+
 
 void taskRESTCommand( void * parameter)
 {

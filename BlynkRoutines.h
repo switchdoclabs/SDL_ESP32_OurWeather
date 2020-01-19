@@ -147,14 +147,16 @@ void myBTimerEvent()
   // only 10 values a second
 
   String currentTimeString;
+
   currentTimeString = returnDateTime(now());
+
   Blynk.virtualWrite(V44, currentTimeString);
 
   Blynk.virtualWrite(V1, String(SHT30_Humidity) + "%");
   Blynk.virtualWrite(V4, String(SHT30_Humidity));
 
 
- 
+
 
   Serial.println("Past first blynk virtual writes");
   char buffer[20];
@@ -176,7 +178,7 @@ void myBTimerEvent()
   }
   else
   {
-    // English Units
+    // Metric
 
 
     char floatString[15];
@@ -230,7 +232,7 @@ void myBTimerEvent()
   char floatString[15];
   String windDirection;
 
- // Lux Values
+  // Lux Values
 
 
 
@@ -361,8 +363,61 @@ void myBTimerEvent()
   // Now solar Variables if present
   delay(500); // push variables into next second - avoid flood
 
-  if (SunAirPlus_Present)
+  if ((SunAirPlus_Present) || (SolarMAXLA == 1) || (SolarMAXLiPo == 1))
   {
+
+    if ((SolarMAXLA == 1) || (SolarMAXLiPo == 1))
+    {
+
+      dtostrf(SolarMAXIT, 5, 2, floatString);
+      Blynk.virtualWrite(V80,  atof(floatString));
+
+      if (EnglishOrMetric == 0)
+      {
+        // English Units
+
+
+        char floatString[15];
+        float FTemp;
+        FTemp = SolarMAXIT * 1.8 + 32.0;
+
+        buffer[0] = '\0';
+        dtostrf(FTemp, 5, 1, floatString);
+        strcat(buffer, floatString);
+        strcat(buffer, "F");
+        Blynk.virtualWrite(V66, buffer);
+
+      }
+      else
+      {
+        // Metric
+
+
+        char floatString[15];
+        float FTemp;
+        FTemp = SolarMAXIT;
+
+        buffer[0] = '\0';
+        dtostrf(FTemp, 5, 1, floatString);
+        strcat(buffer, floatString);
+        strcat(buffer, "C");
+        Blynk.virtualWrite(V66, buffer);
+
+
+      }
+
+      dtostrf(SolarMAXIH, 5, 2, floatString);
+      Blynk.virtualWrite(V67,  String(floatString) + "%");
+
+      if ((ProtocolID == 8) || (ProtocolID == 10))
+      {
+
+        LastSolarSample = returnDateTime(now());
+        Blynk.virtualWrite(V65, LastSolarSample + ":" + String(SolarMAXMessageID));
+
+      }
+
+    }
 
 
     Blynk.virtualWrite(V56, String(returnPercentLeftInBattery(BatteryVoltage , 4.19)) );
@@ -411,14 +466,21 @@ void myBTimerEvent()
     dtostrf((LoadVoltage * LoadCurrent) / 1000.0, 5, 2, floatString);
     Blynk.virtualWrite(V62,  String(floatString) + "W");
 
-    Blynk.virtualWrite(V58,  "Solar Data");
+    if (SunAirPlus_Present == 1)
+      Blynk.virtualWrite(V58,  "SunAirPlus Solar Data");
+
+    if (SolarMAXLA == 1)
+      Blynk.virtualWrite(V58,  "SolarMAX Lead Acid Solar Data");
+
+    if (SolarMAXLiPo == 1)
+      Blynk.virtualWrite(V58,  "SolarMAX LiPo Solar Data");
 
   }
   else
   {
     // SunAirPlus NOT present, so check for WXLink
 
-    if (WXLink_Present == true)
+    if ((WXLinkEnabled == true) && (WXLink_Present == true) && (SolarMAXLA == 0) && (SolarMAXLiPo == 0))
     {
 
       bool dataStale;

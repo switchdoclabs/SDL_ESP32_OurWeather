@@ -1,5 +1,5 @@
 //
-// Supports the SwitchDoc Labs WXLink Device
+// Supports the SwitchDoc Labs WXLink Device / SolarMAX Lead Acid / SolarMAX LiPo
 //
 #include <RH_RF95.h>
 
@@ -23,7 +23,7 @@ RH_RF95<HardwareSerial> rf95(COMSerial);
 bool scanSerialForWXLink()
 {
 
-  
+
   if (!rf95.init())
   {
     Serial.println("WXLink init failed");
@@ -178,16 +178,36 @@ int interpretBuffer(byte *buffer, int buflen)
 
   }
 
-  int ProtocolID = buffer[2] / 10;
+  ProtocolID  = buffer[2] / 10;
 
   if (ProtocolID != 3)
   {
-    #ifdef RXDEBUG
-      Serial.print("Received Protocol ");
+
+#ifdef RXDEBUG
+    Serial.print("Received Protocol ");
+    Serial.println(ProtocolID);
+#endif
+    // now check for our other protocols SolarMAX Lead Acid / Solar Max LiPo
+
+    if ((ProtocolID == 10) && (SolarMAXLA == 1))
+    {
+      Serial.print("SolarMAXLA Received Protocol ");
       Serial.println(ProtocolID);
-    #endif
-    // unknown protocol ignore
-    return 4;
+
+      // set the
+
+    }
+    else
+
+      if ((ProtocolID == 8) && (SolarMAXLiPo == 1))
+      {
+        Serial.print("SolarMAX LiPo Received Protocol ");
+        Serial.println(ProtocolID);
+      }
+
+      else
+        // unknown protocol ignore
+        return 4;
   }
 
   //
@@ -195,76 +215,154 @@ int interpretBuffer(byte *buffer, int buflen)
 #ifdef RXDEBUG
   //
 
-  Serial.println();
-  Serial.println(F("-------------"));
-  Serial.println(F("-------------"));
+  if (ProtocolID == 3)
+  {
 
-  Serial.print(F("ProtocolByte="));
-  Serial.println(buffer[2]);
+    Serial.println();
+    Serial.println(F("-------------"));
+    Serial.println(F("-------------"));
 
-  Serial.print(F("ProtocolID="));
-  Serial.println(buffer[2] / 10);
-  Serial.print(F("Protocol Software Version="));
-  Serial.println(buffer[2] - (buffer[2] / 10) * (10));
+    Serial.print(F("ProtocolByte="));
+    Serial.println(buffer[2]);
 
-  Serial.print(F("TimeSinceReboot(msec)="));
-  Serial.println(convert4BytesToLong(buffer, 3));
+    Serial.print(F("ProtocolID="));
+    Serial.println(buffer[2] / 10);
+    Serial.print(F("Protocol Software Version="));
+    Serial.println(buffer[2] - (buffer[2] / 10) * (10));
 
-  Serial.print(F("Wind Direction="));
-  Serial.println(convert2BytesToInt(buffer, 7));
+    Serial.print(F("TimeSinceReboot(msec)="));
+    Serial.println(convert4BytesToLong(buffer, 3));
 
-  Serial.print(F("Average Wind Speed (KPH)="));
-  Serial.println(convert4BytesToFloat(buffer, 9));
+    Serial.print(F("Wind Direction="));
+    Serial.println(convert2BytesToInt(buffer, 7));
 
-  Serial.print(F("Wind Clicks="));
-  Serial.println(convert4BytesToLong(buffer, 13));
+    Serial.print(F("Average Wind Speed (KPH)="));
+    Serial.println(convert4BytesToFloat(buffer, 9));
 
-  Serial.print(F("Total Rain Clicks="));
-  Serial.println(convert4BytesToLong(buffer, 17));
+    Serial.print(F("Wind Clicks="));
+    Serial.println(convert4BytesToLong(buffer, 13));
 
-  Serial.print(F("Max Wind Gust="));
-  Serial.println(convert4BytesToFloat(buffer, 21));
+    Serial.print(F("Total Rain Clicks="));
+    Serial.println(convert4BytesToLong(buffer, 17));
 
-
-
-  Serial.print(F("Outside Temperature="));
-  Serial.println(convert4BytesToFloat(buffer, 25));
-
-  Serial.print(F("OT Hex="));
-  Serial.print(buffer[25], HEX);
-  Serial.print(buffer[26], HEX);
-  Serial.print(buffer[27], HEX);
-  Serial.println(buffer[28], HEX);
-
-  Serial.print(F("Outside Humidity="));
-  Serial.println(convert4BytesToFloat(buffer, 29));
-
-  Serial.print(F("BatteryVoltage="));
-  Serial.println(convert4BytesToFloat(buffer, 33));
-  Serial.print(F("BatteryCurrent="));
-  Serial.println(convert4BytesToFloat(buffer, 37));
-  Serial.print(F("LoadCurrent="));
-  Serial.println(convert4BytesToFloat(buffer, 41));
-  Serial.print(F("SolarPanelVoltage="));
-  Serial.println(convert4BytesToFloat(buffer, 45));
-  Serial.print(F("SolarPanelCurrent="));
-  Serial.println(convert4BytesToFloat(buffer, 49));
-
-  Serial.print(F("AuxA="));
-  Serial.println(convert4BytesToFloat(buffer, 53));
-
-  Serial.print(F("Message ID="));
-  Serial.println(convert4BytesToLong(buffer, 57));
+    Serial.print(F("Max Wind Gust="));
+    Serial.println(convert4BytesToFloat(buffer, 21));
 
 
-  Serial.print(F("Checksum High=0x"));
-  Serial.println(buffer[61], HEX);
-  Serial.print(F("Checksum Low=0x"));
-  Serial.println(buffer[62], HEX);
+
+    Serial.print(F("Outside Temperature="));
+    Serial.println(convert4BytesToFloat(buffer, 25));
+
+    Serial.print(F("OT Hex="));
+    Serial.print(buffer[25], HEX);
+    Serial.print(buffer[26], HEX);
+    Serial.print(buffer[27], HEX);
+    Serial.println(buffer[28], HEX);
+
+    Serial.print(F("Outside Humidity="));
+    Serial.println(convert4BytesToFloat(buffer, 29));
+
+    Serial.print(F("BatteryVoltage="));
+    Serial.println(convert4BytesToFloat(buffer, 33));
+    Serial.print(F("BatteryCurrent="));
+    Serial.println(convert4BytesToFloat(buffer, 37));
+    Serial.print(F("LoadCurrent="));
+    Serial.println(convert4BytesToFloat(buffer, 41));
+    Serial.print(F("SolarPanelVoltage="));
+    Serial.println(convert4BytesToFloat(buffer, 45));
+    Serial.print(F("SolarPanelCurrent="));
+    Serial.println(convert4BytesToFloat(buffer, 49));
+
+    Serial.print(F("AuxA="));
+    Serial.println(convert4BytesToFloat(buffer, 53));
+
+    Serial.print(F("Message ID="));
+    Serial.println(convert4BytesToLong(buffer, 57));
 
 
+    Serial.print(F("Checksum High=0x"));
+    Serial.println(buffer[61], HEX);
+    Serial.print(F("Checksum Low=0x"));
+    Serial.println(buffer[62], HEX);
+
+  }
+  else if ((ProtocolID == 8) || (ProtocolID == 10))
+  {
+    Serial.println("SolarMAX Data:");
+
+
+    Serial.println();
+    Serial.println(F("-------------"));
+    Serial.println(F("-------------"));
+
+    Serial.print(F("ProtocolByte="));
+    Serial.println(buffer[2]);
+
+    Serial.print(F("ProtocolID="));
+    Serial.println(buffer[2] / 10);
+    Serial.print(F("Protocol Software Version="));
+    Serial.println(buffer[2] - (buffer[2] / 10) * (10));
+
+
+
+    Serial.print(F("SolarMAX Inside Temperature="));
+    Serial.println(convert4BytesToFloat(buffer, 25));
+    Serial.print(F("SolarMAX Inside Humidity="));
+    Serial.println(convert4BytesToFloat(buffer, 29));
+
+    Serial.print(F("SolarMAXLoadVoltage="));
+    Serial.println(convert4BytesToFloat(buffer, 21));
+    Serial.print(F("SolarMAXLoadCurrent="));
+    Serial.println(convert4BytesToFloat(buffer, 32 + 9));
+
+    Serial.print(F("SolarMAXBatteryVoltage="));
+    Serial.println(convert4BytesToFloat(buffer, 32 + 1));
+    Serial.print(F("SolarMAXBatteryCurrent="));
+    Serial.println(convert4BytesToFloat(buffer, 32 + 5));
+
+    Serial.print(F("SolarMAXSolarPanelVoltage="));
+    Serial.println(convert4BytesToFloat(buffer, 32 + 13));
+    Serial.print(F("SolarMAXSolarPanelCurrent="));
+    Serial.println(convert4BytesToFloat(buffer, 32 + 17));
+
+
+    Serial.print(F("Message ID="));
+    Serial.println(convert4BytesToLong(buffer, 57));
+
+
+    Serial.print(F("Checksum High=0x"));
+    Serial.println(buffer[61], HEX);
+    Serial.print(F("Checksum Low=0x"));
+    Serial.println(buffer[62], HEX);
+
+  }
 
 #endif
+
+  // build the solar max data
+
+  if ((ProtocolID == 8) || (ProtocolID == 10))
+  {
+
+
+    LoadVoltage = convert4BytesToFloat(buffer, 21);
+    LoadCurrent = convert4BytesToFloat(buffer, 32 + 9);
+
+
+    BatteryVoltage = convert4BytesToFloat(buffer, 32 + 1);
+    BatteryCurrent = -convert4BytesToFloat(buffer, 32 + 5);
+
+    SolarPanelVoltage = convert4BytesToFloat(buffer, 32 + 13);
+    SolarPanelCurrent = -convert4BytesToFloat(buffer, 32 + 17);
+
+
+    SolarMAXIT = convert4BytesToFloat(buffer, 25);
+    SolarMAXIH = convert4BytesToFloat(buffer, 29);
+    SolarMAXMessageID = convert4BytesToLong(buffer, 57);
+
+   
+
+  }
 
   return 0;
 

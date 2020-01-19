@@ -11,3 +11,6 @@ SemaphoreHandle_t  xSemaphoreRESTCommand;
 
 
 SemaphoreHandle_t  xSemaphoreReadWXLink;
+
+
+SemaphoreHandle_t  xSemaphoreSendMQTT;

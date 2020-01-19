@@ -1,5 +1,5 @@
 // Filename WeatherPlus.ino
-// Version 050 September 2019
+// Version 053 January 2019
 // SwitchDoc Labs, LLC
 //
 
@@ -7,18 +7,20 @@
 //
 
 
-#define WEATHERPLUSESP32VERSION "051"
+#define WEATHERPLUSESP32VERSION "053"
 
 #define CONTROLLERBOARD "V2"
 
-#define WEATHERPLUSPUBNUBPROTOCOL "OURWEATHER050"
+#define WEATHERPLUSMQTTPROTOCOL "OURWEATHER050"
 
 // define OWDEBUG to print out lots of debugging information for WeatherPlus.
 
 
-#define OWDEBUG
+#undef OWDEBUG
 
-#undef PUBNUB_DEBUG
+// not implemented as of V053
+
+#undef MQTT_DEBUG
 
 #define BLINKPIN 13
 
@@ -26,7 +28,7 @@
 
 #define DEFAULTCLOCKTIMEOFFSETTOUTC -21600
 
-#define DEBUGBLYNK
+#undef DEBUGBLYNK
 
 #define BLYNK_NO_BUILTIN
 
@@ -181,10 +183,11 @@ void configModeCallback (WiFiManager *myWiFiManager)
 
 #include "config.h"
 
-int pubNubEnabled;
+int MQTTEnabled;
 
-String SDL2PubNubCode  = "";
-String SDL2PubNubCode_Sub = "";
+String SDL2MQTTServer  = "";
+int SDL2MQTTServer_Port = 0;
+int SDL2MQTTServer_Time = 0;
 
 // Blynk Codes
 String BlynkAuthCode = "";
@@ -201,11 +204,6 @@ WidgetTerminal statusTerminal(V32);
 #define PUBLISHINTERVALSECONDS 30
 
 
-#define PubNub_BASE_CLIENT WiFiClient
-
-#define PUBNUB_DEFINE_STRSPN_AND_STRNCASECMP
-
-#include "PubNub.h"
 
 
 
@@ -232,8 +230,6 @@ String getValue(String data, char separator, int index)
 
 //
 
-char channel1[]  = "OWIOT1";
-char uuid[]   = WEATHERPLUSPUBNUBPROTOCOL;
 
 
 
@@ -276,7 +272,7 @@ char uuid[]   = WEATHERPLUSPUBNUBPROTOCOL;
 #define DISPLAY_UPDATE_FINISHED 14
 #define DISPLAY_SUNAIRPLUS 16
 #define DISPLAY_WXLINK 17
-#define DISPLAY_SDL2PUBNUBCODE 18
+#define DISPLAY_SDL2MQTTServer 18
 #define DISPLAY_FAILED_RECONNECT 19
 #define DISPLAY_LIGHTNING_STATUS 20
 #define DISPLAY_LIGHTNING_DISPLAY 21
@@ -429,6 +425,17 @@ int as3835_LightningCountSinceBootup = 0;
 
 String as3935_FullString = "";
 String as3935_Params = "";
+
+int WXLinkEnabled = 0;
+int SolarMAXLA = 0;
+int SolarMAXLiPo = 0;
+
+int ProtocolID = 0;
+
+float SolarMAXIT = 0.0;
+float SolarMAXIH = 0.0;
+long SolarMAXMessageID = 0;
+String LastSolarSample;
 
 int as3935_NoiseFloor = 2;
 
@@ -597,6 +604,10 @@ int lastMessageID;
 
 #include "RTOSDefs.h"
 
+// RSSI
+
+int currentRSSI;
+
 
 // WeatherRack
 
@@ -731,14 +742,61 @@ float lastRain;
 #define YPOS 1
 #define DELTAY 2
 
+
+// MQTT
+
+#include "aPubSubClient.h"
+WiFiClient espClient;
+PubSubClient MQTTclient(espClient);
+unsigned long MQTTlastMsg = 0;
+#define MQTTMSG_BUFFER_SIZE  (400)
+char MQTTmsg[MQTTMSG_BUFFER_SIZE];
+
 // aREST functions
 
 #include "aRestFunctions.h"
 
 
-#include "SDL2PubNub.h"
+void MQTTcallback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
 
+}
 
+void MQTTreconnect() {
+  // Loop until we're reconnected
+  if (!MQTTclient.connected()) {
+    int i = 0;
+    while (i < 5)
+    {
+      Serial.print("Attempting MQTT connection...");
+      // Create a random client ID
+      String clientId = "OurWeatherClient-";
+      clientId += String(random(0xffff), HEX);
+      // Attempt to connect
+      if (MQTTclient.connect(clientId.c_str())) {
+        Serial.println("connected");
+        // Once connected, publish an announcement...
+        //MQTTclient.publish("OurWeather", "hello world");
+        i = 5;
+
+      } else {
+        Serial.print("failed, rc=");
+        Serial.print(MQTTclient.state());
+        Serial.println(" try again in 2 seconds");
+        // Wait 2 seconds before retrying
+        delay(2000);
+
+      }
+      i++;
+    }
+  }
+}
 
 // SunAirPlus
 
@@ -887,6 +945,9 @@ bool isDataStale()
 void readSensors()
 {
 
+  Serial.println("---------------");
+  Serial.println("Reading Sensors");
+  Serial.println("---------------");
 
 
 
@@ -1154,21 +1215,7 @@ void readSensors()
 #endif
 
   }
-  else
-  {
 
-    LoadVoltage = 0.0;
-    LoadCurrent = 0.0;
-
-
-    BatteryVoltage = 0.0;
-    BatteryCurrent = 0.0;
-
-    SolarPanelVoltage = 0.0;
-    SolarPanelCurrent = 0.0;
-
-
-  }
 
 
 
@@ -1177,39 +1224,7 @@ void readSensors()
   Serial.println("---------------");
   Serial.println("WeatherRack");
   Serial.println("---------------");
-
-  if (WXLink_Present == false)
-  {
-
-    currentWindSpeed = weatherStation.current_wind_speed();
-    currentWindGust = weatherStation.get_wind_gust();
-
-    currentWindDirection = weatherStation.current_wind_direction();
-
-    float oldRain = rainTotal;
-    rainTotal = rainTotal + weatherStation.get_current_rain_total();
-    if (oldRain < rainTotal)
-    {
-      strcpy(bubbleStatus, "It is Raining\0");
-      writeToBlynkStatusTerminal((String)"It is Raining");
-    }
-
-    windSpeedGraph.add_value(currentWindSpeed);
-    windGustGraph.add_value(currentWindGust);
-    windDirectionGraph.add_value(currentWindDirection);
-
-    windSpeedGraph.getRasPiString(windSpeedBuffer, windSpeedBuffer);
-    windGustGraph.getRasPiString(windGustBuffer, windGustBuffer);
-    windDirectionGraph.getRasPiString(windDirectionBuffer, windDirectionBuffer);
-
-    windSpeedMin = windSpeedGraph.returnMinValue();
-    windSpeedMax = windSpeedGraph.returnMaxValue();
-    windGustMin = windGustGraph.returnMinValue();
-    windGustMax = windGustGraph.returnMaxValue();
-    windDirectionMin = windDirectionGraph.returnMinValue();
-    windDirectionMax = windDirectionGraph.returnMaxValue();
-  }
-  else
+  if ((WXLinkEnabled == true) && (WXLink_Present == true))
   {
     // WXLink is PRESENT, take from WXLink
 
@@ -1260,6 +1275,7 @@ void readSensors()
 
       // set up solar status and message ID for screen
 
+
       // if WXLINK present, read charge data
 
 
@@ -1289,6 +1305,40 @@ void readSensors()
       */
 
 
+
+
+    }
+    else
+    {
+
+
+      currentWindSpeed = weatherStation.current_wind_speed();
+      currentWindGust = weatherStation.get_wind_gust();
+
+      currentWindDirection = weatherStation.current_wind_direction();
+
+      float oldRain = rainTotal;
+      rainTotal = rainTotal + weatherStation.get_current_rain_total();
+      if (oldRain < rainTotal)
+      {
+        strcpy(bubbleStatus, "It is Raining\0");
+        writeToBlynkStatusTerminal((String)"It is Raining");
+      }
+
+      windSpeedGraph.add_value(currentWindSpeed);
+      windGustGraph.add_value(currentWindGust);
+      windDirectionGraph.add_value(currentWindDirection);
+
+      windSpeedGraph.getRasPiString(windSpeedBuffer, windSpeedBuffer);
+      windGustGraph.getRasPiString(windGustBuffer, windGustBuffer);
+      windDirectionGraph.getRasPiString(windDirectionBuffer, windDirectionBuffer);
+
+      windSpeedMin = windSpeedGraph.returnMinValue();
+      windSpeedMax = windSpeedGraph.returnMaxValue();
+      windGustMin = windGustGraph.returnMinValue();
+      windGustMax = windGustGraph.returnMaxValue();
+      windDirectionMin = windDirectionGraph.returnMinValue();
+      windDirectionMax = windDirectionGraph.returnMaxValue();
 
 
     }
@@ -1410,7 +1460,7 @@ void readSensors()
     RestDataString += "WXLMB ,";
   }
 
-  RestDataString += String(pubNubEnabled) + ",";
+  RestDataString += String(MQTTEnabled) + ",";
 
 
   if (AS3935Present == true)
@@ -1506,7 +1556,7 @@ void readSensors()
   as3935_FullString += String(as3935_LastLightningDistance) + ",";
   as3935_FullString += as3935_LastEvent + ",";
   as3935_FullString += as3935_LastEventTimeStamp + ",";
-  as3935_FullString += String(as3835_LightningCountSinceBootup);
+  as3935_FullString += String(as3835_LightningCountSinceBootup) + ",";
 
 
   // Lighting Rest
@@ -1515,12 +1565,22 @@ void readSensors()
   RestDataString += String(as3935_LastLightningDistance) + ",";
   RestDataString += as3935_LastEvent + ",";
   RestDataString += as3935_LastEventTimeStamp + ",";
-  RestDataString += String(as3835_LightningCountSinceBootup);
+  RestDataString += String(as3835_LightningCountSinceBootup) + ",";
 
 
   // HDC1080 Humidity
   RestDataString += String(BMP280_Humidity, 2) + ",";
 
+  // RSSI
+
+  currentRSSI = fetchRSSI();
+  RestDataString += String(currentRSSI);
+
+  // SolarMAX Lead Acid Data
+  RestDataString += String(SolarMAXLA);
+
+  // SolarMAX LiPo Data
+  RestDataString += String(SolarMAXLiPo);
 
   if (timeElapsed300Seconds > 300000)   // 5 minutes
   {
@@ -1607,17 +1667,6 @@ void readSensors()
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    // send data up to PubNub
-
-    if (pubNubEnabled == 1)
-    {
-
-      String SendString = "{\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
-
-      // publish it
-
-      publishPubNubMessage(SendString);
-    }
   }
 
 
@@ -1690,6 +1739,19 @@ void readWXLinkSensors()
 
 }
 
+
+// rssi
+
+int fetchRSSI()
+{
+
+  wifi_ap_record_t wifidata;
+  if (esp_wifi_sta_get_ap_info(&wifidata) == 0) {
+
+    return wifidata.rssi;
+  }
+  return 0;
+}
 // RTOS
 
 #include "RTOSTasks.h"
@@ -1788,6 +1850,10 @@ void setup() {
   xSemaphoreGive( xSemaphoreReadWXLink);   // initialize
   xSemaphoreTake( xSemaphoreReadWXLink, 10);   // start with this off
 
+  xSemaphoreSendMQTT = xSemaphoreCreateBinary();
+  xSemaphoreGive( xSemaphoreSendMQTT);   // initialize
+  xSemaphoreTake( xSemaphoreSendMQTT, 10);   // start with this off
+
 
   Serial.println("RTOS Tasks Starting");
 
@@ -1805,6 +1871,15 @@ void setup() {
   xTaskCreatePinnedToCore(
     taskReadWXLink,          /* Task function. */
     "taskReadWXLink",        /* String with name of task. */
+    10000,            /* Stack size in words. */
+    NULL,             /* Parameter passed as input of the task */
+    3,                /* Priority of the task. */
+    NULL,             /* Task handle. */
+    1);               // Specific Core
+
+  xTaskCreatePinnedToCore(
+    taskSendMQTT,          /* Task function. */
+    "taskSendMQTT",        /* String with name of task. */
     10000,            /* Stack size in words. */
     NULL,             /* Parameter passed as input of the task */
     3,                /* Priority of the task. */
@@ -1997,6 +2072,25 @@ void setup() {
     Serial.println(WiFi.channel());
   }
 
+  if (WiFiPresent == true)
+  {
+    if (MQTTEnabled == 1)
+    {
+
+      Serial.println("--------");
+      Serial.println("MQTT Start");
+      Serial.println("--------");
+      MQTTclient.setServer(SDL2MQTTServer.c_str(), SDL2MQTTServer_Port);
+      MQTTclient.setCallback(MQTTcallback);
+
+      xSemaphoreGive(xSemaphoreSendMQTT); // start the semaphore
+    }
+
+  }
+
+
+  currentRSSI = fetchRSSI();
+  printf("rssi:%d\r\n", currentRSSI);
   //---------------------
   // End Setup WiFi Interface
   //---------------------
@@ -2134,6 +2228,7 @@ void setup() {
 
   rest.variable("Controllerboard", &controllerBoard);
 
+  rest.variable("RSSI", &currentRSSI);
 
 
 
@@ -2156,7 +2251,7 @@ void setup() {
     }
   }
   // health indications for device
-  rest.variable("ESP8266HeapSize", &heapSize);
+  rest.variable("ESP32HeapSize", &heapSize);
 
 
 
@@ -2203,12 +2298,15 @@ void setup() {
 
   rest.function("MetricUnits",   metricUnitControl);
 
-  // PubNub
+  // MQTT
 
-  rest.function("EnablePubNub", enableDisableSDL2PubNub);
+  rest.function("EnableMQTT", enableDisableSDL2MQTT);
 
-  rest.function("SendPubNubState", sendStateSDL2PubNub);
+  rest.function("SendMQTTState", sendStateSDL2MQTT);
 
+  // WXLink Information
+
+  rest.function("setWSMAX", setWSMAX);
 
   // Thunderboard functions AS3935
 
@@ -2289,12 +2387,12 @@ void setup() {
   if (WXLink_Present == false)
   {
 
-    Serial.println("WXLink Not Present");
+    Serial.println("WXLink Receiver Not Present");
   }
   else
   {
 
-    Serial.println("WXLink Present");
+    Serial.println("WXLink Receiever Present");
     xSemaphoreGive( xSemaphoreReadWXLink);  // start the thread
   }
 
@@ -2354,9 +2452,9 @@ void setup() {
 
   updateDisplay(DISPLAY_IPDISPLAY);
 
-  // Now put PUBNUB Code up there
+  // Now put MQTT Code up there
 
-  updateDisplay(DISPLAY_SDL2PUBNUBCODE);
+  updateDisplay(DISPLAY_SDL2MQTTServer);
 
 
   timeElapsed = 0;
@@ -2500,13 +2598,6 @@ void setup() {
   */
 
 
-  if (WiFiPresent == true)
-  {
-
-    PubNub.begin(SDL2PubNubCode.c_str(), SDL2PubNubCode_Sub.c_str());
-
-    Serial.println("PubNub set up");
-  }
 
   updateDisplay(DISPLAY_DEVICEPRESENT);
 
@@ -2570,6 +2661,26 @@ void setup() {
     else
     {
       writeToBlynkStatusTerminal("WXLink Not Present");
+    }
+
+    if (SolarMAXLA == 1)
+    {
+      writeToBlynkStatusTerminal("SolarMAX Lead Acid Enabled");
+
+    }
+    else
+    {
+      writeToBlynkStatusTerminal("SolarMAX Lead Acid  Not Enabled");
+    }
+
+    if (SolarMAXLiPo == 1)
+    {
+      writeToBlynkStatusTerminal("SolarMAX LiPo Enabled");
+
+    }
+    else
+    {
+      writeToBlynkStatusTerminal("SolarMAX LiPo  Not Enabled");
     }
 
     if (AirQualityPresent)
@@ -2675,41 +2786,17 @@ void setup() {
 
 void loop() {
 
-  /*
-    // put your main code here, to run repeatedly:
-    //Serial.println("Starting Main Loop");
-    // Handle REST calls
-    WiFiClient client = server.available();
 
-    int timeout;
-    timeout = 0;
-    if (client)
-    {
-
-    // Thank you to MAKA69 for this suggestion
-    while (!client.available()) {
-      Serial.print(".");
-      delay(1);
-      timeout++;
-      if (timeout > 1000) {
-        Serial.print("INFINITE LOOP BREAK!");
-        break;
-      }
+  // put your main code here, to run repeatedly:
+/*
+  if (MQTTEnabled == 1)
+  {
+    if (!MQTTclient.connected()) {
+      MQTTreconnect();
     }
-    if (client.available())
-    {
+    MQTTclient.loop();
 
-
-
-
-      rest.handle(client);
-
-    }
-    }
-    client.stop();
-
-
-
+  }
   */
 
   if (UseBlynk)

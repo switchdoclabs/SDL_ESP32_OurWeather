@@ -56,6 +56,8 @@ int resetWiFiAccessPoint(String command)
 
 }
 
+
+
 int resetOurWeather(String command) {
 
   Serial.println("resetOurWeather - settings invalidated");
@@ -161,6 +163,8 @@ int setWUKEY(String command)
 }
 
 void startBlynk();
+
+
 int setBAKEY(String command)
 {
   Serial.print("Command =");
@@ -263,12 +267,12 @@ int setUTCOffset(String command)
 
       Serial.println("Updating UTC Offset");
       ClockTimeOffsetToUTC = _offset.toInt();
-      
+
       writePreferences();
 
       ESP.restart();
       //timeClient.forceUpdate();
-      
+
 
 
     }
@@ -549,3 +553,235 @@ int jsonCmd(String command)
   }
 
 */
+
+int setWSMAX(String command)
+{
+
+  Serial.print("Command =");
+  Serial.println(command);
+
+  String sentPassword;
+  String setValue;
+
+
+  sentPassword = getValue(command, ',', 0);
+
+
+  if (sentPassword == adminPassword)
+  {
+
+
+    setValue = getValue(command, ',', 1);
+    WXLinkEnabled = setValue.toInt();
+    setValue = getValue(command, ',', 2);
+    SolarMAXLA = setValue.toInt();
+    setValue = getValue(command, ',', 3);
+    SolarMAXLiPo = setValue.toInt();
+
+
+
+
+    writePreferences();
+
+
+
+
+
+    return 1;
+  }
+  else
+    return 0;
+
+  // Get state from command
+
+
+  return 1;
+}
+
+
+// ThunderBoard AS3935 Functions
+
+
+
+
+/*
+  // set up as3935 REST variable
+  as3935_Params = as3935_NoiseFloor + ",";
+  as3935_Params = + as3935_Indoor + ",";
+  as3935_Params = + as3935_TuneCap + ",";
+  as3935_Params = + as3935_DisturberDetection + ",";
+  as3935_Params = + as3935_WatchdogThreshold + ",";
+  as3935_Params = + as3935_SpikeDetection ;
+
+*/
+int setThunderBoardParams(String command)
+{
+
+
+  String sentPassword;
+  String setValue;
+
+
+  sentPassword = getValue(command, ',', 0);
+
+  if (sentPassword == adminPassword)
+  {
+    if (AS3935Present == true)
+    {
+      int index;
+      index = command.indexOf(',');
+      command = command.substring(index + 1);
+
+      Serial.print ("as3935_Params=");
+      Serial.println(command);
+
+      if ((command.length() < 11) || (command.length() > 14))
+      {
+        return 2;
+      }
+      else
+      {
+        as3935_Params = command;
+        int error;
+        // execute and set them!
+        error = parseOutAS3935Parameters();
+        if (error == 2)
+          return 2;
+
+        setAS3935Parameters();
+
+        writePreferences();
+      }
+
+
+      return 1;
+    }
+
+  }
+  return 0;
+}
+
+
+
+
+int sendStateSDL2MQTT(String command)
+{
+  String sentPassword;
+
+  if (MQTTEnabled == 1)
+  {
+    sentPassword = getValue(command, ',', 0);
+
+
+
+    if (sentPassword == adminPassword)
+    {
+      if (!MQTTclient.connected()) {
+          MQTTreconnect();
+        }
+        MQTTclient.loop();
+
+        String AddString;
+        
+  
+ 
+      AddString = "\"stationname\": ";
+      AddString += stationName;
+      AddString +=  ", \"softwareversion\": ";
+      AddString += WEATHERPLUSESP32VERSION;
+      AddString += ", \"hardware\": ";
+      AddString += HARDWARE;
+      AddString += ", \"Controllerboard\": ";
+      AddString += "V2", true;
+      AddString += ", \"connected\": true";
+
+        //String SendString = "{"\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
+        String SendString = "{"+AddString+" ,\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
+ 
+
+      // publish it
+      Serial.println("Sending MQTT Packet");
+
+      //GETpublishMQTTMessage(SendString);
+      int result;
+      result = MQTTclient.publish("OurWeather", SendString.c_str());
+      Serial.print("MQTT publish result=");
+      Serial.println(result);
+    }
+    else
+    {
+
+      return 0;
+    }
+    return 1;
+
+
+
+
+  }
+
+  return 0;
+
+}
+
+// Enable MQTT
+
+
+int enableDisableSDL2MQTT(String command)
+{
+
+  Serial.print("Command =");
+  Serial.println(command);
+
+  String sentPassword;
+  String setValue;
+
+
+  sentPassword = getValue(command, ',', 0);
+  setValue = getValue(command, ',', 1);
+  SDL2MQTTServer = getValue(command, ',', 2);
+  String tempString;
+  tempString = getValue(command, ',', 3);
+  SDL2MQTTServer_Port = tempString.toInt();
+  tempString = getValue(command, ',', 4);
+  SDL2MQTTServer_Time = tempString.toInt();
+  if (sentPassword == adminPassword)
+  {
+    MQTTEnabled = setValue.toInt();
+    Serial.print("MQTTEnabled=");
+    Serial.print(MQTTEnabled);
+    if (MQTTEnabled == 1)
+    {
+      if (SDL2MQTTServer.length() > 2)
+      {
+        if (SDL2MQTTServer_Port != 0)
+        {
+
+          if (SDL2MQTTServer_Time != 0)
+          {
+
+            writePreferences();
+            delay(1000);
+            ESP.restart();
+          }
+
+
+        }
+
+      }
+
+
+
+
+
+    }
+    return 1;
+  }
+  else
+    return 0;
+
+  // Get state from command
+
+
+  return 1;
+}
