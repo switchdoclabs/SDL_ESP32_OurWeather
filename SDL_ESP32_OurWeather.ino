@@ -1,5 +1,5 @@
 // Filename WeatherPlus.ino
-// Version 053 January 2019
+// Version 054 February 2019
 // SwitchDoc Labs, LLC
 //
 
@@ -8,7 +8,7 @@
 
 
 
-#define WEATHERPLUSESP32VERSION "053"
+#define WEATHERPLUSESP32VERSION "054"
 
 #define CONTROLLERBOARD "V2"
 
@@ -667,7 +667,7 @@ int pinRain = 12;
 Adafruit_ADS1015 ads1015(0x49);
 
 int current_quality = -1;
-Adafruit_ADS1115 adsAirQuality(0x49);
+//Adafruit_ADS1115 adsAirQuality(0x49);
 
 
 
@@ -1142,10 +1142,10 @@ void readSensors()
 
 #ifdef OWDEBUG
 
-    int16_t ad0 = adsAirQuality.readADC_SingleEnded(0);
-    int16_t ad1 = adsAirQuality.readADC_SingleEnded(1);
-    int16_t ad2 = adsAirQuality.readADC_SingleEnded(2);
-    int16_t ad3 = adsAirQuality.readADC_SingleEnded(3);
+    int16_t ad0 = ads1015.readADC_SingleEnded(0);
+    int16_t ad1 = ads1015.readADC_SingleEnded(1);
+    int16_t ad2 = ads1015.readADC_SingleEnded(2);
+    int16_t ad3 = ads1015.readADC_SingleEnded(3);
 
     Serial.print("ad0=");
     Serial.println(ad0);
@@ -1158,20 +1158,6 @@ void readSensors()
     Serial.println(ad3);
 
 
-
-    int16_t ad0_0x49 = ads1015.readADC_SingleEnded(0);
-    int16_t ad1_0x49 = ads1015.readADC_SingleEnded(1);
-    int16_t ad2_0x49 = ads1015.readADC_SingleEnded(2);
-    int16_t ad3_0x49 = ads1015.readADC_SingleEnded(3);
-
-    Serial.print("ad0_0x49=");
-    Serial.println(ad0_0x49);
-    Serial.print("ad1_0x49=");
-    Serial.println(ad1_0x49);
-    Serial.print("ad2_0x49=");
-    Serial.println(ad2_0x49);
-    Serial.print("ad3_0x49=");
-    Serial.println(ad3_0x49);
 #endif
 
     currentAirQuality = getAirQuality();
@@ -1228,6 +1214,7 @@ void readSensors()
   if ((WXLinkEnabled == true) && (WXLink_Present == true))
   {
     // WXLink is PRESENT, take from WXLink
+    Serial.println("WeatherRack on WXLink");
 
     ProtocolID  = buffer[2] / 10;
 
@@ -1317,45 +1304,46 @@ void readSensors()
       }
 
     }
-    else
-    {
-
-
-      currentWindSpeed = weatherStation.current_wind_speed();
-      currentWindGust = weatherStation.get_wind_gust();
-
-      currentWindDirection = weatherStation.current_wind_direction();
-
-      float oldRain = rainTotal;
-      rainTotal = rainTotal + weatherStation.get_current_rain_total();
-      if (oldRain < rainTotal)
-      {
-        strcpy(bubbleStatus, "It is Raining\0");
-        writeToBlynkStatusTerminal((String)"It is Raining");
-      }
-
-      windSpeedGraph.add_value(currentWindSpeed);
-      windGustGraph.add_value(currentWindGust);
-      windDirectionGraph.add_value(currentWindDirection);
-
-      windSpeedGraph.getRasPiString(windSpeedBuffer, windSpeedBuffer);
-      windGustGraph.getRasPiString(windGustBuffer, windGustBuffer);
-      windDirectionGraph.getRasPiString(windDirectionBuffer, windDirectionBuffer);
-
-      windSpeedMin = windSpeedGraph.returnMinValue();
-      windSpeedMax = windSpeedGraph.returnMaxValue();
-      windGustMin = windGustGraph.returnMinValue();
-      windGustMax = windGustGraph.returnMaxValue();
-      windDirectionMin = windDirectionGraph.returnMinValue();
-      windDirectionMax = windDirectionGraph.returnMaxValue();
-
-
-    }
-
 
 
 
   }
+  else
+  {
+
+    Serial.println("WeatherRack on Local Station");
+    currentWindSpeed = weatherStation.current_wind_speed();
+    currentWindGust = weatherStation.get_wind_gust();
+
+    currentWindDirection = weatherStation.current_wind_direction();
+
+    float oldRain = rainTotal;
+    rainTotal = rainTotal + weatherStation.get_current_rain_total();
+    if (oldRain < rainTotal)
+    {
+      strcpy(bubbleStatus, "It is Raining\0");
+      writeToBlynkStatusTerminal((String)"It is Raining");
+    }
+
+    windSpeedGraph.add_value(currentWindSpeed);
+    windGustGraph.add_value(currentWindGust);
+    windDirectionGraph.add_value(currentWindDirection);
+
+    windSpeedGraph.getRasPiString(windSpeedBuffer, windSpeedBuffer);
+    windGustGraph.getRasPiString(windGustBuffer, windGustBuffer);
+    windDirectionGraph.getRasPiString(windDirectionBuffer, windDirectionBuffer);
+
+    windSpeedMin = windSpeedGraph.returnMinValue();
+    windSpeedMax = windSpeedGraph.returnMaxValue();
+    windGustMin = windGustGraph.returnMinValue();
+    windGustMax = windGustGraph.returnMaxValue();
+    windDirectionMin = windDirectionGraph.returnMinValue();
+    windDirectionMax = windDirectionGraph.returnMaxValue();
+
+
+  }
+
+
 
 
 
@@ -2413,19 +2401,18 @@ void setup() {
 
   ads1015.begin();
 
-  adsAirQuality.begin();
 
 
-  int16_t ad0 = adsAirQuality.readADC_SingleEnded(3);
+  int16_t ad3 = ads1015.readADC_SingleEnded(3);
 
 
-  Serial.print("ad0- AQS =");
-  Serial.println(ad0);
+  Serial.print("ad3- AQS =");
+  Serial.println(ad3);
   currentAirQuality = -1;
   currentAirQualitySensor = 0;
   INTcurrentAirQualitySensor = 0;
 
-  if (ad0 != -1)
+  if (ad3 != -1)
   {
     AirQualityPresent = true;
     Serial.println("AirQuality Extension Present");

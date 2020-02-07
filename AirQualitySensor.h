@@ -3,8 +3,8 @@ int getAirQuality(void)
 
   // Values in this routine are for 16 bit ADC
 
-  int16_t sensor_value = adsAirQuality.readADC_SingleEnded(3);
- // int16_t sensor_value = adsAirQuality.readADC_SingleEnded(0);
+  int16_t sensor_value = ads1015.readADC_SingleEnded(3);
+
   Serial.print("Sensor_Value=");
   Serial.print(sensor_value);
   Serial.print("--->");
@@ -13,8 +13,8 @@ int getAirQuality(void)
   int i;
   for (i=0;i<4;i++)
   {
-  int16_t sensor_value = adsAirQuality.readADC_SingleEnded(i);
- // int16_t sensor_value = adsAirQuality.readADC_SingleEnded(0);
+  int16_t sensor_value = ads1015.readADC_SingleEnded(i);
+
   Serial.print("Sensor_Value=");
   Serial.print(sensor_value);
   Serial.print("--->");
@@ -23,7 +23,7 @@ int getAirQuality(void)
   }
   #endif
 
-  currentAirQualitySensor = sensor_value;
+  currentAirQualitySensor = sensor_value*16;// adjust for ADC12
 
 
   // limit the conversion for the INT value
