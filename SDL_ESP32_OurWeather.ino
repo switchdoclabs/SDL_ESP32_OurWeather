@@ -1,5 +1,5 @@
 // Filename WeatherPlus.ino
-// Version 054 February 2019
+// Version 055 February 2019
 // SwitchDoc Labs, LLC
 //
 
@@ -8,7 +8,7 @@
 
 
 
-#define WEATHERPLUSESP32VERSION "054"
+#define WEATHERPLUSESP32VERSION "055"
 
 #define CONTROLLERBOARD "V2"
 
@@ -652,8 +652,8 @@ char windDirectionBuffer[150];  // wind speed graph
 int WpinLED = 0;
 // Anenometer connected to GPIO 14
 int pinAnem = 14;
-// Rain Bucket connected to  GPIO 12
-int pinRain = 12;
+// Rain Bucket connected to  GPIO 15
+int pinRain = 15;
 
 #include "OurWeatherPreferences.h";
 #include "utility.h"
