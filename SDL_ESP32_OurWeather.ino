@@ -1,5 +1,5 @@
 // Filename WeatherPlus.ino
-// Version 055 February 2019
+// Version 056 February 2019
 // SwitchDoc Labs, LLC
 //
 
@@ -8,7 +8,7 @@
 
 
 
-#define WEATHERPLUSESP32VERSION "055"
+#define WEATHERPLUSESP32VERSION "056"
 
 #define CONTROLLERBOARD "V2"
 
@@ -17,7 +17,7 @@
 // define OWDEBUG to print out lots of debugging information for WeatherPlus.
 
 
-#define OWDEBUG
+#undef OWDEBUG
 
 // not implemented as of V053
 

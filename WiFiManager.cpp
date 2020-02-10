@@ -583,6 +583,7 @@ void WiFiManager::handleWifi(boolean scan) {
 }
 
 /** Handle the WLAN save form and redirect to WLAN config page again */
+/*
 void WiFiManager::handleWifiSave() {
   DEBUG_WM(F("WiFi save"));
 
@@ -637,6 +638,96 @@ void WiFiManager::handleWifiSave() {
   page += FPSTR(HTTP_END);
 
   server->sendHeader("Content-Length", String(page.length()));
+  server->send(200, "text/html", page);
+
+  DEBUG_WM(F("Sent wifi save page"));
+
+  connect = true; //signal ready to connect/reset
+}
+
+
+*/
+
+/** Handle the WLAN save form and redirect to WLAN config page again */
+void WiFiManager::handleWifiSave() {
+  DEBUG_WM(F("WiFi save"));
+  Serial.print("WiFi save");
+
+  //SAVE/connect here
+  _ssid = server->arg("s").c_str();
+  _pass = server->arg("p").c_str();
+  //SAVE/connect here
+  _name   = server->arg("n").c_str();
+  _ssid = server->arg("s").c_str();
+  _pass = server->arg("p").c_str(); 
+  _altitude   = server->arg("a").c_str();
+
+
+  Wssid = _ssid;
+  WPassword = _pass;
+  stationName = _name;
+  if (_altitude.length() != 0)
+  {
+    float altitudeF;
+    altitudeF = _altitude.toFloat();
+    if (altitudeF != 0.0)
+      altitude_meters = altitudeF;
+
+  }
+
+
+  DEBUG_WM(_ssid);
+  DEBUG_WM(_pass);
+  DEBUG_WM(_altitude);
+
+
+  DEBUG_WM(_name);
+
+  //parameters
+  for (int i = 0; i < _paramsCount; i++) {
+    if (_params[i] == NULL) {
+      break;
+    }
+    //read parameter
+    String value = server->arg(_params[i]->getID()).c_str();
+    //store it in array
+    value.toCharArray(_params[i]->_value, _params[i]->_length);
+    DEBUG_WM(F("Parameter"));
+    DEBUG_WM(_params[i]->getID());
+    DEBUG_WM(value);
+  }
+
+  if (server->arg("ip") != "") {
+    DEBUG_WM(F("static ip"));
+    DEBUG_WM(server->arg("ip"));
+    //_sta_static_ip.fromString(server->arg("ip"));
+    String ip = server->arg("ip");
+    optionalIPFromString(&_sta_static_ip, ip.c_str());
+  }
+  if (server->arg("gw") != "") {
+    DEBUG_WM(F("static gateway"));
+    DEBUG_WM(server->arg("gw"));
+    String gw = server->arg("gw");
+    optionalIPFromString(&_sta_static_gw, gw.c_str());
+  }
+  if (server->arg("sn") != "") {
+    DEBUG_WM(F("static netmask"));
+    DEBUG_WM(server->arg("sn"));
+    String sn = server->arg("sn");
+    optionalIPFromString(&_sta_static_sn, sn.c_str());
+  }
+  // set clock if requested
+
+ 
+  String page = FPSTR(HTTP_HEAD);
+  page.replace("{v}", "Credentials Saved");
+  page += FPSTR(HTTP_SCRIPT);
+  page += FPSTR(HTTP_STYLE);
+  page += _customHeadElement;
+  page += FPSTR(HTTP_HEAD_END);
+  page += FPSTR(HTTP_SAVED);
+  page += FPSTR(HTTP_END);
+
   server->send(200, "text/html", page);
 
   DEBUG_WM(F("Sent wifi save page"));

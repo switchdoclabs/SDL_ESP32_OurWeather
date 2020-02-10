@@ -6,6 +6,8 @@ Arduino IDE software designed for the ESP32 on the WeatherPlus Board and the Our
 www.switchdoc.com<BR>
 February 2020
 
+Version V056 - February 9, 2020 -  Adds station name and altitude to Wifi config page<BR>
+
 Version V055 - February 8, 2020 - Fixes Interrupt pin for the Rain Bucket on WeatherRack<B> 
 
 Version V054 - February 7, 2020 - Corrects an conflict between the AirQuality sensor and the Wind Vane and fixes the WeatherRack problem introducted in V053<BR>

@@ -23,7 +23,11 @@
 #include "DNSServer.h"
 #include <memory>
 
-
+extern String WPassword;
+extern String Wssid;
+extern String stationName;
+extern float altitude_meters;
+extern String adminPassword;
 
 #if defined(ESP8266)
 extern "C" {
@@ -34,7 +38,7 @@ extern "C" {
 #include <esp_wifi.h>
 #define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 #endif
-
+/*
 const char HTTP_HEAD[] PROGMEM            = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>{v}</title>";
 const char HTTP_STYLE[] PROGMEM           = "<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>";
 const char HTTP_SCRIPT[] PROGMEM          = "<script>function c(l){document.getElementById('s').value=l.innerText||l.textContent;document.getElementById('p').focus();}</script>";
@@ -47,6 +51,31 @@ const char HTTP_FORM_PARAM[] PROGMEM      = "<br/><input id='{i}' name='{n}' len
 const char HTTP_FORM_END[] PROGMEM        = "<br/><button type='submit'>save</button></form>";
 const char HTTP_SCAN_LINK[] PROGMEM       = "<br/><div class=\"c\"><a href=\"/wifi\">Scan</a></div>";
 const char HTTP_SAVED[] PROGMEM           = "<div>Credentials Saved<br />Trying to connect OurWeather to the network.<br />If it fails, reconnect to AP to try again</div>";
+const char HTTP_END[] PROGMEM             = "</div></body></html>";
+*/
+
+
+const char HTTP_200[] PROGMEM             = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+const char HTTP_HEAD[] PROGMEM            = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>{v}</title>";
+const char HTTP_STYLE[] PROGMEM           = "<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;}</style>";
+const char HTTP_SCRIPT[] PROGMEM          = "<script>function c(l){document.getElementById('s').value=l.innerText||l.textContent;document.getElementById('p').focus();}</script>";
+const char HTTP_HEAD_END[] PROGMEM        = "</head><body><div style='text-align:left;display:inline-block;min-width:260px;'>";
+//const char HTTP_PORTAL_OPTIONS[] PROGMEM = "SwitchDoc Labs OurWeather<BR><form action=\"wifi\" method=\"get\"><button>Configure WiFi</button></form><br/><form action=\"0wifi\" method=\"get\"><button>Configure WiFi (No Scan)</button></form>";
+const char HTTP_PORTAL_OPTIONS[] PROGMEM = "SwitchDoc Labs OurWeather<BR><form action=\"wifi\" method=\"get\"><button>Configure WiFi</button></form>";
+//const char HTTP_PORTAL_OPTIONS[] PROGMEM  = "<form action=\"/wifi\" method=\"get\"><button>Configure WiFi</button></form><br/><form action=\"/0wifi\" method=\"get\"><button>Configure WiFi (No Scan)</button></form><br/><form action=\"/i\" method=\"get\"><button>Info</button></form><br/><form action=\"/r\" method=\"post\"><button>Reset</button></form>";
+const char HTTP_ITEM[] PROGMEM            = "<div><a href='#p' onclick='c(this)'>{v}</a>&nbsp;<span class='q {i}'>{r}%</span></div>";
+//const char HTTP_ITEM_PADLOCK[] PROGMEM = "<img src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==' width='13px'/>";
+const char HTTP_FORM_START[] PROGMEM      = "<form method='get' action='wifisave'><input id='n' name='n' length=32 placeholder='your Station Name'>Your Station Name<br/><input id='s' name='s' length=32 placeholder='WiFi SSID'> WiFi Name<br/><input id='p' name='p' length=64 placeholder='WiFi password'>WiFi Password<br/><br/><input id='a' name='a' length=64 placeholder='altitude in meters'>Alt in Meters<br/>";
+//const char HTTP_FORM_PARAM[] PROGMEM      = "<br/><br/><input id='a' name='a' length=64 placeholder='altitude in meters'><br/><br/>";
+const char HTTP_FORM_PARAM[] PROGMEM      = "<br/><br/><input id='a' name='a' length=64 placeholder='altitude in meters'><br/>";
+const char HTTP_FORM_END[] PROGMEM        = "<br/><br/><button type='submit'>save</button></form>";
+//const char HTTP_FORM_START[] PROGMEM      = "<form method='get' action='wifisave'><input id='n' name='n' length=32 placeholder='your Station Name'>Your Station Name<br/><input id='s' name='s' length=32 placeholder='WiFi SSID'>WiFi Name<br/><input id='p' name='p' length=64 placeholder='WiFi password'>WiFi Password<br/><br/><input id='a' name='a' length=64 placeholder='altitude in meters'>Alt in Meters<br/><br/>";
+//const char HTTP_FORM_PARAM[] PROGMEM      = "<input id='d' name='d' length=64 placeholder='Mmm dd yyyy'> Set Date - Example:  Jan 07 2016<br/><br/><input id='t' name='t' length=64 placeholder='hh:mm:ss'>Set Time (hh:mm:ss) - 24 Hour Clock<br/><br/><button type='submit'>save</button></form>";
+//const char HTTP_FORM_END[] PROGMEM        = "<br/><button type='submit'>save</button></form>";
+//const char HTTP_FORM[] PROGMEM = "<form method='get' action='wifisave'><input id='n' name='n' length=32 placeholder='your Station Name'><br/><input id='s' name='s' length=32 placeholder='WiFi SSID'><br/><input id='p' name='p' length=64 placeholder='WiFi password'><br/><br/><input id='a' name='a' length=64 placeholder='altitude in meters'><br/><br/><input id='d' name='d' length=64 placeholder='Mmm dd yyyy'> Example:  Jan 07 2016<br/><br/><input id='t' name='t' length=64 placeholder='hh:mm:ss'><br/><br/><button type='submit'>save</button></form>";
+
+const char HTTP_SCAN_LINK[] PROGMEM       = "<br/><div class=\"c\"><a href=\"/wifi\">Scan</a></div>";
+const char HTTP_SAVED[] PROGMEM           = "<div>Credentials Saved<br />Trying to connect OurWeather to network.<br />If it fails, reconnect to 192.168.4.1 and repeat the procedure to try again</div>";
 const char HTTP_END[] PROGMEM             = "</div></body></html>";
 
 #define WIFI_MANAGER_MAX_PARAMS 10
@@ -145,6 +174,8 @@ class WiFiManager
     const char*   _apPassword             = NULL;
     String        _ssid                   = "";
     String        _pass                   = "";
+    String      _name = "";
+    String      _altitude = "";
     unsigned long _configPortalTimeout    = 0;
     unsigned long _connectTimeout         = 0;
     unsigned long _configPortalStart      = 0;
@@ -196,6 +227,7 @@ class WiFiManager
     void (*_savecallback)(void) = NULL;
 
     WiFiManagerParameter* _params[WIFI_MANAGER_MAX_PARAMS];
+
 
     template <typename Generic>
     void          DEBUG_WM(Generic text);
