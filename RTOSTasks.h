@@ -29,8 +29,9 @@ void taskReadSensors( void * parameter)
 
     if (uxSemaphoreGetCount( xSemaphoreReadSensor ) > 0)
     {
-
+      xSemaphoreTake( xSemaphoreSensorsBeingRead, 1000);
       readSensors();
+      xSemaphoreGive( xSemaphoreSensorsBeingRead);
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -48,7 +49,9 @@ void taskReadWXLink( void * parameter)
     if (uxSemaphoreGetCount( xSemaphoreReadWXLink ) > 0)
     {
 
+
       readWXLinkSensors();
+
     }
     vTaskDelay(30000 / portTICK_PERIOD_MS);
 
@@ -70,28 +73,28 @@ void taskSendMQTT( void * parameter)
 
       if (MQTTEnabled == 1)
       {
-
+        xSemaphoreTake( xSemaphoreSensorsBeingRead, 1000);
         if (!MQTTclient.connected()) {
           MQTTreconnect();
         }
         MQTTclient.loop();
 
         String AddString;
-        
-  
- 
-      AddString = "\"stationname\": ";
-      AddString += stationName;
-      AddString +=  ", \"softwareversion\": ";
-      AddString += WEATHERPLUSESP32VERSION;
-      AddString += ", \"hardware\": ";
-      AddString += HARDWARE;
-      AddString += ", \"Controllerboard\": ";
-      AddString += "V2", true;
-      AddString += ", \"connected\": true";
+
+
+
+        AddString = "\"stationname\": ";
+        AddString += stationName;
+        AddString +=  ", \"softwareversion\": ";
+        AddString += WEATHERPLUSESP32VERSION;
+        AddString += ", \"hardware\": ";
+        AddString += HARDWARE;
+        AddString += ", \"Controllerboard\": ";
+        AddString += "V2", true;
+        AddString += ", \"connected\": true";
 
         //String SendString = "{"\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
-        String SendString = "{"+AddString+" ,\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
+        String SendString = "{" + AddString + " ,\"FullDataString\": \"" + RestDataString + "\"}"; //Send the request
 
         // publish it
 
@@ -109,8 +112,8 @@ void taskSendMQTT( void * parameter)
     int MQTTdelay;
     MQTTdelay = SDL2MQTTServer_Time * 1000;
     if (MQTTdelay < 60 * 1000)
-      MQTTdelay = 60* 1000;   // rate limit to 60 sec
-
+      MQTTdelay = 60 * 1000;  // rate limit to 60 sec
+    xSemaphoreGive( xSemaphoreSensorsBeingRead);
     vTaskDelay(MQTTdelay / portTICK_PERIOD_MS);
 
   }
@@ -126,7 +129,7 @@ void taskRESTCommand( void * parameter)
     if (uxSemaphoreGetCount( xSemaphoreRESTCommand ) > 0)
     {
 
-
+      xSemaphoreTake( xSemaphoreSensorsBeingRead, 1000);
       // Handle REST calls
       WiFiClient client = server.available();
 
@@ -156,6 +159,7 @@ void taskRESTCommand( void * parameter)
         }
       }
       client.stop();
+      xSemaphoreGive( xSemaphoreSensorsBeingRead);
 
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }

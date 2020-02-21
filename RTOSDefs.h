@@ -6,9 +6,9 @@
 
 SemaphoreHandle_t  xSemaphoreReadSensor;
 
-
 SemaphoreHandle_t  xSemaphoreRESTCommand;
 
+SemaphoreHandle_t  xSemaphoreSensorsBeingRead;
 
 SemaphoreHandle_t  xSemaphoreReadWXLink;
 

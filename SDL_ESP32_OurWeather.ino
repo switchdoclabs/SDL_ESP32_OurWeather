@@ -1,5 +1,5 @@
 // Filename WeatherPlus.ino
-// Version 056 February 2019
+// Version 057 February 2019
 // SwitchDoc Labs, LLC
 //
 
@@ -8,7 +8,7 @@
 
 
 
-#define WEATHERPLUSESP32VERSION "056"
+#define WEATHERPLUSESP32VERSION "057"
 
 #define CONTROLLERBOARD "V2"
 
@@ -1843,6 +1843,10 @@ void setup() {
   xSemaphoreGive( xSemaphoreReadSensor);   // initialize
   xSemaphoreTake( xSemaphoreReadSensor, 10);   // start with this off
 
+  xSemaphoreSensorsBeingRead = xSemaphoreCreateBinary();
+  xSemaphoreGive( xSemaphoreSensorsBeingRead);   // initialize it on
+  
+  
   xSemaphoreReadWXLink = xSemaphoreCreateBinary();
   xSemaphoreGive( xSemaphoreReadWXLink);   // initialize
   xSemaphoreTake( xSemaphoreReadWXLink, 10);   // start with this off
@@ -2765,7 +2769,7 @@ void setup() {
 
   }
 
-  // Turn on display loop
+  
   xSemaphoreGive( xSemaphoreReadSensor);   // turn it on
 
 

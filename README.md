@@ -4,7 +4,8 @@ OurWeather Software for the SwitchDoc Labs Board WeatherPlus2 ESP32 based board
 Arduino IDE software designed for the ESP32 on the WeatherPlus Board and the OurWeather Weather Kit
 
 www.switchdoc.com<BR>
-February 2020
+
+Version V057 - February 21, 2020 -  Added Semaphore protection to REST and MQTT<BR>
 
 Version V056 - February 9, 2020 -  Adds station name and altitude to Wifi config page<BR>
 
