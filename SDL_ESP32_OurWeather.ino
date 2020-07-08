@@ -1,5 +1,5 @@
 // Filename WeatherPlus.ino
-// Version 057 February 2019
+// Version 059 June 2020
 // SwitchDoc Labs, LLC
 //
 
@@ -8,7 +8,7 @@
 
 
 
-#define WEATHERPLUSESP32VERSION "057"
+#define WEATHERPLUSESP32VERSION "059"
 
 #define CONTROLLERBOARD "V2"
 
@@ -655,12 +655,12 @@ int pinAnem = 14;
 // Rain Bucket connected to  GPIO 15
 int pinRain = 15;
 
+
 #include "OurWeatherPreferences.h";
 #include "utility.h"
 
 // include GET IP routines
 #include "SDL_ESP32_BC24_GETIP.h"
-
 #include "OWMAdafruit_ADS1015.h"
 
 
@@ -783,7 +783,7 @@ void MQTTreconnect() {
       if (MQTTclient.connect(clientId.c_str())) {
         Serial.println("connected");
         // Once connected, publish an announcement...
-        //MQTTclient.publish("OurWeather", "hello world");
+        MQTTclient.publish("SGS/5051", "hello world");
         i = 5;
 
       } else {

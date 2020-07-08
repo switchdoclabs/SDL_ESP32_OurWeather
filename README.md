@@ -5,6 +5,8 @@ Arduino IDE software designed for the ESP32 on the WeatherPlus Board and the Our
 
 www.switchdoc.com<BR>
 
+Version V059 - July 8, 2020 -  Fixed Weatherunderground preferences issue <BR>
+ 
 Version V057 - February 21, 2020 -  Added Semaphore protection to REST and MQTT<BR>
 
 Version V056 - February 9, 2020 -  Adds station name and altitude to Wifi config page<BR>

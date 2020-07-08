@@ -3,7 +3,7 @@
 // Collection of routines to get IP from  AP Access Point
 // SwitchDoc
 // June 2018 Version 1.0
-//
+//  
 //
 // 1) SmartConfig
 // 3) WPS Button

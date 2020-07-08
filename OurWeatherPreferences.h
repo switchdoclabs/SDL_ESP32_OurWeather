@@ -150,7 +150,7 @@ void readPreferences()
   adminPassword = preferences.getString("adminPassword", "admin");
 
   WeatherUnderground_StationID = preferences.getString("WU_StationID", "");
-  WeatherUnderground_StationKey = preferences.putString("WU_StationKey", "");
+  WeatherUnderground_StationKey = preferences.getString("WU_StationKey", "");
 
   MQTTEnabled = preferences.getInt("MQTTEnabled", 0);
   SDL2MQTTServer = preferences.getString("SDL2MQTTServer", "XX");
